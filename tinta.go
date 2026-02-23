@@ -1,10 +1,14 @@
 // Package tinta provides a minimal, chainable terminal text styler.
 //
-// Configure first, write last:
+// Configure first, write last, e.g.:
 //
 //	tinta.Red().Bold().Println("error: something broke")
-//	tinta.White().BgBlue().Printf("status: %d", code)
+//	tinta.White().OnBlue().Printf("status: %d", code)
 //	msg := tinta.Green().Bold().String("ok")
+//
+// The default output is os.Stdout. Change it with [SetOutput].
+//
+// Color support is detected automatically. Override with [ForceColors].
 package tinta
 
 import (
@@ -16,7 +20,6 @@ import (
 
 const cReset = "\x1b[0m"
 
-// ANSI codes (unexported, flat strings for zero-alloc append).
 const (
 	cBold      = "1"
 	cDim       = "2"
@@ -44,41 +47,64 @@ const (
 	cBrightCyan    = "96"
 	cBrightWhite   = "97"
 
-	cBgBlack   = "40"
-	cBgRed     = "41"
-	cBgGreen   = "42"
-	cBgYellow  = "43"
-	cBgBlue    = "44"
-	cBgMagenta = "45"
-	cBgCyan    = "46"
-	cBgWhite   = "47"
+	cOnBlack   = "40"
+	cOnRed     = "41"
+	cOnGreen   = "42"
+	cOnYellow  = "43"
+	cOnBlue    = "44"
+	cOnMagenta = "45"
+	cOnCyan    = "46"
+	cOnWhite   = "47"
 
-	cBgBrightBlack   = "100"
-	cBgBrightRed     = "101"
-	cBgBrightGreen   = "102"
-	cBgBrightYellow  = "103"
-	cBgBrightBlue    = "104"
-	cBgBrightMagenta = "105"
-	cBgBrightCyan    = "106"
-	cBgBrightWhite   = "107"
+	cOnBrightBlack   = "100"
+	cOnBrightRed     = "101"
+	cOnBrightGreen   = "102"
+	cOnBrightYellow  = "103"
+	cOnBrightBlue    = "104"
+	cOnBrightMagenta = "105"
+	cOnBrightCyan    = "106"
+	cOnBrightWhite   = "107"
 )
 
-// enabled caches whether stdout supports ANSI colors. Evaluated once at init.
-var enabled = detectColor()
+// Package-level state.
+var (
+	output  io.Writer = os.Stdout
+	enabled           = detectColor()
+)
 
-// ForceColors overrides automatic detection and always enables or disables colors.
+// SetOutput changes the default writer used by [Style.Print], [Style.Println]
+// and [Style.Printf]. It is not safe for concurrent use.
+func SetOutput(w io.Writer) { output = w }
+
+// ForceColors overrides automatic detection.
 func ForceColors(on bool) { enabled = on }
 
-// Style accumulates ANSI codes. Build with constructors, write with terminal methods.
-type Style struct {
+// style is intentionally unexported. Users interact with it through the
+// exported Style type alias below and the package-level constructors.
+// This prevents manual instantiation (e.g. Style{}) which would be meaningless.
+type style struct {
 	codes []string
 }
 
+// Style is the public handle returned by every constructor and modifier.
+// The underlying struct is opaque; users cannot create one manually.
+type Style = *style
+
+// newStyle allocates a style with a single initial code.
 func newStyle(code string) Style {
-	return Style{codes: []string{code}}
+	return &style{codes: []string{code}}
 }
 
-// --- Foreground constructors ---
+// with returns a new style that has all existing codes plus one more.
+// It copies the slice to guarantee immutability of the source.
+func (s *style) with(code string) Style {
+	cp := make([]string, len(s.codes)+1)
+	copy(cp, s.codes)
+	cp[len(s.codes)] = code
+	return &style{codes: cp}
+}
+
+// --- Foreground constructors (package entry points) ---
 
 func Black() Style   { return newStyle(cBlack) }
 func Red() Style     { return newStyle(cRed) }
@@ -103,93 +129,106 @@ func BrightWhite() Style   { return newStyle(cBrightWhite) }
 func Bold() Style      { return newStyle(cBold) }
 func Underline() Style { return newStyle(cUnderline) }
 
-// --- Background ---
+// --- Background (On*) ---
 
-func (s Style) BgBlack() Style   { return s.with(cBgBlack) }
-func (s Style) BgRed() Style     { return s.with(cBgRed) }
-func (s Style) BgGreen() Style   { return s.with(cBgGreen) }
-func (s Style) BgYellow() Style  { return s.with(cBgYellow) }
-func (s Style) BgBlue() Style    { return s.with(cBgBlue) }
-func (s Style) BgMagenta() Style { return s.with(cBgMagenta) }
-func (s Style) BgCyan() Style    { return s.with(cBgCyan) }
-func (s Style) BgWhite() Style   { return s.with(cBgWhite) }
+func (s *style) OnBlack() Style   { return s.with(cOnBlack) }
+func (s *style) OnRed() Style     { return s.with(cOnRed) }
+func (s *style) OnGreen() Style   { return s.with(cOnGreen) }
+func (s *style) OnYellow() Style  { return s.with(cOnYellow) }
+func (s *style) OnBlue() Style    { return s.with(cOnBlue) }
+func (s *style) OnMagenta() Style { return s.with(cOnMagenta) }
+func (s *style) OnCyan() Style    { return s.with(cOnCyan) }
+func (s *style) OnWhite() Style   { return s.with(cOnWhite) }
 
-func (s Style) BgBrightBlack() Style   { return s.with(cBgBrightBlack) }
-func (s Style) BgBrightRed() Style     { return s.with(cBgBrightRed) }
-func (s Style) BgBrightGreen() Style   { return s.with(cBgBrightGreen) }
-func (s Style) BgBrightYellow() Style  { return s.with(cBgBrightYellow) }
-func (s Style) BgBrightBlue() Style    { return s.with(cBgBrightBlue) }
-func (s Style) BgBrightMagenta() Style { return s.with(cBgBrightMagenta) }
-func (s Style) BgBrightCyan() Style    { return s.with(cBgBrightCyan) }
-func (s Style) BgBrightWhite() Style   { return s.with(cBgBrightWhite) }
+func (s *style) OnBrightBlack() Style   { return s.with(cOnBrightBlack) }
+func (s *style) OnBrightRed() Style     { return s.with(cOnBrightRed) }
+func (s *style) OnBrightGreen() Style   { return s.with(cOnBrightGreen) }
+func (s *style) OnBrightYellow() Style  { return s.with(cOnBrightYellow) }
+func (s *style) OnBrightBlue() Style    { return s.with(cOnBrightBlue) }
+func (s *style) OnBrightMagenta() Style { return s.with(cOnBrightMagenta) }
+func (s *style) OnBrightCyan() Style    { return s.with(cOnBrightCyan) }
+func (s *style) OnBrightWhite() Style   { return s.with(cOnBrightWhite) }
 
 // --- Modifiers ---
 
-func (s Style) Bold() Style      { return s.with(cBold) }
-func (s Style) Dim() Style       { return s.with(cDim) }
-func (s Style) Italic() Style    { return s.with(cItalic) }
-func (s Style) Underline() Style { return s.with(cUnderline) }
-func (s Style) Invert() Style    { return s.with(cInvert) }
-func (s Style) Hidden() Style    { return s.with(cHidden) }
-func (s Style) Strike() Style    { return s.with(cStrike) }
+func (s *style) Bold() Style      { return s.with(cBold) }
+func (s *style) Dim() Style       { return s.with(cDim) }
+func (s *style) Italic() Style    { return s.with(cItalic) }
+func (s *style) Underline() Style { return s.with(cUnderline) }
+func (s *style) Invert() Style    { return s.with(cInvert) }
+func (s *style) Hidden() Style    { return s.with(cHidden) }
+func (s *style) Strike() Style    { return s.with(cStrike) }
 
-// --- Terminal methods (these produce output) ---
+// --- Terminal methods ---
 
 // String returns the styled text.
-func (s Style) String(text string) string {
+func (s *style) String(text string) string {
 	return s.render(text)
 }
 
 // Sprintf formats and returns the styled text.
-func (s Style) Sprintf(format string, a ...any) string {
+func (s *style) Sprintf(format string, a ...any) string {
 	return s.render(fmt.Sprintf(format, a...))
 }
 
-// Print writes the styled text to stdout.
-func (s Style) Print(text string) {
-	fmt.Fprint(os.Stdout, s.render(text))
+// Print writes the styled text to the default output.
+func (s *style) Print(text string) {
+	fmt.Fprint(output, s.render(text))
 }
 
-// Printf formats and writes the styled text to stdout.
-func (s Style) Printf(format string, a ...any) {
-	fmt.Fprint(os.Stdout, s.render(fmt.Sprintf(format, a...)))
+// Printf formats and writes the styled text to the default output.
+func (s *style) Printf(format string, a ...any) {
+	fmt.Fprint(output, s.render(fmt.Sprintf(format, a...)))
 }
 
-// Println writes the styled text followed by a newline to stdout.
-func (s Style) Println(text string) {
-	fmt.Fprintln(os.Stdout, s.render(text))
+// Println writes the styled text followed by a newline to the default output.
+func (s *style) Println(text string) {
+	fmt.Fprintln(output, s.render(text))
 }
 
 // Fprint writes the styled text to w.
-func (s Style) Fprint(w io.Writer, text string) {
+func (s *style) Fprint(w io.Writer, text string) {
 	fmt.Fprint(w, s.render(text))
 }
 
 // Fprintf formats and writes the styled text to w.
-func (s Style) Fprintf(w io.Writer, format string, a ...any) {
+func (s *style) Fprintf(w io.Writer, format string, a ...any) {
 	fmt.Fprint(w, s.render(fmt.Sprintf(format, a...)))
 }
 
 // Fprintln writes the styled text followed by a newline to w.
-func (s Style) Fprintln(w io.Writer, text string) {
+func (s *style) Fprintln(w io.Writer, text string) {
 	fmt.Fprintln(w, s.render(text))
 }
 
 // --- internals ---
 
-func (s Style) with(code string) Style {
-	s.codes = append(s.codes, code)
-	return s
-}
-
-func (s Style) render(text string) string {
+func (s *style) render(text string) string {
 	if !enabled || len(s.codes) == 0 {
 		return text
 	}
+
+	// Compute exact size: \x1b[ + code1;code2;... + m + text + \x1b[0m
+	size := 2 // \x1b[
+	for i, c := range s.codes {
+		if i > 0 {
+			size++ // ;
+		}
+		size += len(c)
+	}
+	size++ // m
+	size += len(text)
+	size += len(cReset)
+
 	var b strings.Builder
-	b.Grow(4 + len(s.codes)*4 + len(text) + len(cReset))
+	b.Grow(size)
 	b.WriteString("\x1b[")
-	b.WriteString(strings.Join(s.codes, ";"))
+	for i, c := range s.codes {
+		if i > 0 {
+			b.WriteByte(';')
+		}
+		b.WriteString(c)
+	}
 	b.WriteByte('m')
 	b.WriteString(text)
 	b.WriteString(cReset)
