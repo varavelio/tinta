@@ -9,6 +9,10 @@ tasks:
       - task lint
       - task test
 
+  demo:
+    desc: Preview all tinta styles
+    cmd: FORCE_COLOR=1 go run ./internal/demo
+
   format:
     desc: Format the code
     cmds:
