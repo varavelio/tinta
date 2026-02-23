@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+tasks:
+  ci:
+    desc: Run all CI tasks
+    cmds:
+      - task lint
+      - task test
+
+  format:
+    desc: Format the code
+    cmds:
+      - go fmt ./...
+      - dprint fmt
+
+  test:
+    desc: Run tests
+    cmd: go test -v ./...
+
+  lint:
+    desc: Lint the code
+    cmds:
+      - dprint check
+      - golangci-lint run
