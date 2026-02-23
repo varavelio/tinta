@@ -527,19 +527,25 @@ func TestFprintDisabled(t *testing.T) {
 
 	t.Run("fprint writes plain text", func(t *testing.T) {
 		var buf bytes.Buffer
-		Red().Bold().Fprint(&buf, "plain")
+		n, err := Red().Bold().Fprint(&buf, "plain")
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 5, n)
 		assert.Equal(t, "plain", buf.String())
 	})
 
 	t.Run("fprintln writes plain text with newline", func(t *testing.T) {
 		var buf bytes.Buffer
-		Green().Fprintln(&buf, "line")
+		n, err := Green().Fprintln(&buf, "line")
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 5, n)
 		assert.Equal(t, "line\n", buf.String())
 	})
 
 	t.Run("fprintf writes plain formatted text", func(t *testing.T) {
 		var buf bytes.Buffer
-		Blue().Fprintf(&buf, "n=%d", 42)
+		n, err := Blue().Fprintf(&buf, "n=%d", 42)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 4, n)
 		assert.Equal(t, "n=42", buf.String())
 	})
 }
@@ -592,7 +598,11 @@ func TestConcurrentFprintIndependent(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				var buf bytes.Buffer
-				Red().Fprint(&buf, fmt.Sprintf("item-%d", i))
+				_, err := Red().Fprint(&buf, fmt.Sprintf("item-%d", i))
+				if err != nil {
+					t.Errorf("goroutine %d: Fprint error: %v", i, err)
+					return
+				}
 				got := buf.String()
 				expected := fmt.Sprintf("\x1b[31mitem-%d\x1b[0m", i)
 				if got != expected {
