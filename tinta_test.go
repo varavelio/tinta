@@ -110,19 +110,22 @@ func TestUnderlineConstructor(t *testing.T) {
 func TestFprint(t *testing.T) {
 	t.Run("fprint writes styled text", func(t *testing.T) {
 		var buf bytes.Buffer
-		Red().Bold().Fprint(&buf, "err")
+		_, err := Red().Bold().Fprint(&buf, "err")
+		assert.Equal(t, nil, err)
 		assert.Equal(t, "\x1b[31;1merr\x1b[0m", buf.String())
 	})
 
 	t.Run("fprintln appends newline", func(t *testing.T) {
 		var buf bytes.Buffer
-		Green().Fprintln(&buf, "ok")
+		_, err := Green().Fprintln(&buf, "ok")
+		assert.Equal(t, nil, err)
 		assert.Equal(t, "\x1b[32mok\x1b[0m\n", buf.String())
 	})
 
 	t.Run("fprintf formats with args", func(t *testing.T) {
 		var buf bytes.Buffer
-		Blue().Fprintf(&buf, "n=%d", 7)
+		_, err := Blue().Fprintf(&buf, "n=%d", 7)
+		assert.Equal(t, nil, err)
 		assert.Equal(t, "\x1b[34mn=7\x1b[0m", buf.String())
 	})
 }
@@ -335,7 +338,10 @@ func TestConcurrentPrint(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				var buf bytes.Buffer
-				Red().Fprint(&buf, "x")
+				_, err := Red().Fprint(&buf, "x")
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
 				got := buf.String()
 				if got != "\x1b[31mx\x1b[0m" {
 					t.Errorf("expected styled output, got %q", got)

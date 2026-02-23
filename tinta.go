@@ -197,32 +197,32 @@ func (s *style) Sprintf(format string, a ...any) string {
 
 // Print writes the styled text to the default output.
 func (s *style) Print(text string) {
-	fmt.Fprint(getOutput(), s.render(text))
+	_, _ = fmt.Fprint(getOutput(), s.render(text))
 }
 
 // Printf formats and writes the styled text to the default output.
 func (s *style) Printf(format string, a ...any) {
-	fmt.Fprint(getOutput(), s.render(fmt.Sprintf(format, a...)))
+	_, _ = fmt.Fprint(getOutput(), s.render(fmt.Sprintf(format, a...)))
 }
 
 // Println writes the styled text followed by a newline to the default output.
 func (s *style) Println(text string) {
-	fmt.Fprintln(getOutput(), s.render(text))
+	_, _ = fmt.Fprintln(getOutput(), s.render(text))
 }
 
 // Fprint writes the styled text to w.
-func (s *style) Fprint(w io.Writer, text string) {
-	fmt.Fprint(w, s.render(text))
+func (s *style) Fprint(w io.Writer, text string) (int, error) {
+	return fmt.Fprint(w, s.render(text))
 }
 
 // Fprintf formats and writes the styled text to w.
-func (s *style) Fprintf(w io.Writer, format string, a ...any) {
-	fmt.Fprint(w, s.render(fmt.Sprintf(format, a...)))
+func (s *style) Fprintf(w io.Writer, format string, a ...any) (int, error) {
+	return fmt.Fprint(w, s.render(fmt.Sprintf(format, a...)))
 }
 
 // Fprintln writes the styled text followed by a newline to w.
-func (s *style) Fprintln(w io.Writer, text string) {
-	fmt.Fprintln(w, s.render(text))
+func (s *style) Fprintln(w io.Writer, text string) (int, error) {
+	return fmt.Fprintln(w, s.render(text))
 }
 
 // --- internals ---
