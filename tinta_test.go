@@ -267,13 +267,15 @@ func TestConcurrentString(t *testing.T) {
 		expected := "\x1b[31;1mhello\x1b[0m"
 
 		var wg sync.WaitGroup
-		for range 100 {
-			wg.Go(func() {
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				got := s.String("hello")
 				if got != expected {
 					t.Errorf("expected %q, got %q", expected, got)
 				}
-			})
+			}()
 		}
 		wg.Wait()
 	})
@@ -284,8 +286,10 @@ func TestConcurrentBranching(t *testing.T) {
 		base := White().OnBlue()
 
 		var wg sync.WaitGroup
-		for range 100 {
-			wg.Go(func() {
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				bold := base.Bold()
 				italic := base.Italic()
 
@@ -302,7 +306,7 @@ func TestConcurrentBranching(t *testing.T) {
 				if gotBase != "\x1b[37;44mx\x1b[0m" {
 					t.Errorf("base: got %q", gotBase)
 				}
-			})
+			}()
 		}
 		wg.Wait()
 	})
@@ -314,25 +318,29 @@ func TestConcurrentPrint(t *testing.T) {
 		defer SetOutput(nil)
 
 		var wg sync.WaitGroup
-		for range 50 {
-			wg.Go(func() {
+		for i := 0; i < 50; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				Red().Print("x")
-			})
+			}()
 		}
 		wg.Wait()
 	})
 
 	t.Run("concurrent Fprint to independent buffers", func(t *testing.T) {
 		var wg sync.WaitGroup
-		for range 50 {
-			wg.Go(func() {
+		for i := 0; i < 50; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				var buf bytes.Buffer
 				Red().Fprint(&buf, "x")
 				got := buf.String()
 				if got != "\x1b[31mx\x1b[0m" {
 					t.Errorf("expected styled output, got %q", got)
 				}
-			})
+			}()
 		}
 		wg.Wait()
 	})
@@ -343,8 +351,11 @@ func TestConcurrentForceColors(t *testing.T) {
 		defer ForceColors(true) // restore
 
 		var wg sync.WaitGroup
-		for i := range 100 {
-			wg.Go(func() {
+		for i := 0; i < 100; i++ {
+			i := i // capture for Go <1.22
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				if i%2 == 0 {
 					ForceColors(false)
 				} else {
@@ -352,7 +363,7 @@ func TestConcurrentForceColors(t *testing.T) {
 				}
 				// Should not panic or race; result depends on timing.
 				_ = Red().String("x")
-			})
+			}()
 		}
 		wg.Wait()
 	})
@@ -363,11 +374,13 @@ func TestConcurrentSetOutput(t *testing.T) {
 		defer SetOutput(nil)
 
 		var wg sync.WaitGroup
-		for range 100 {
-			wg.Go(func() {
+		for i := 0; i < 100; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				var buf bytes.Buffer
 				SetOutput(&buf)
-			})
+			}()
 		}
 		wg.Wait()
 	})
@@ -567,8 +580,11 @@ func TestSprintfMultipleVerbs(t *testing.T) {
 func TestConcurrentFprintIndependent(t *testing.T) {
 	t.Run("concurrent Fprint to separate buffers", func(t *testing.T) {
 		var wg sync.WaitGroup
-		for i := range 100 {
-			wg.Go(func() {
+		for i := 0; i < 100; i++ {
+			i := i // capture for Go <1.22
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 				var buf bytes.Buffer
 				Red().Fprint(&buf, fmt.Sprintf("item-%d", i))
 				got := buf.String()
@@ -576,7 +592,7 @@ func TestConcurrentFprintIndependent(t *testing.T) {
 				if got != expected {
 					t.Errorf("goroutine %d: expected %q, got %q", i, expected, got)
 				}
-			})
+			}()
 		}
 		wg.Wait()
 	})
