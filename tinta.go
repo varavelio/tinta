@@ -10,8 +10,8 @@
 //
 // # Box: layout, borders and spacing
 //
-//	tinta.Box().Rounded().Padding(1).PaddingX(2).Println("hello")
-//	tinta.Box().Double().Blue().PaddingX(1).Println("status")
+//	tinta.Box().BorderRounded().Padding(1).PaddingLeft(2).Println("hello")
+//	tinta.Box().BorderDouble().Blue().PaddingX(1).Println("status")
 //
 // The default output is [os.Stdout]. Change it with [SetOutput].
 // Color support is detected automatically. Override with [ForceColors].

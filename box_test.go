@@ -51,7 +51,7 @@ func TestBoxString(t *testing.T) {
 
 func TestBoxBorderStyles(t *testing.T) {
 	t.Run("rounded", func(t *testing.T) {
-		got := Box().Rounded().String("x")
+		got := Box().BorderRounded().String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "╭─╮", lines[0])
 		assert.Equal(t, "│x│", lines[1])
@@ -59,7 +59,7 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("double", func(t *testing.T) {
-		got := Box().Double().String("x")
+		got := Box().BorderDouble().String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "╔═╗", lines[0])
 		assert.Equal(t, "║x║", lines[1])
@@ -67,7 +67,7 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("heavy", func(t *testing.T) {
-		got := Box().Heavy().String("x")
+		got := Box().BorderHeavy().String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┏━┓", lines[0])
 		assert.Equal(t, "┃x┃", lines[1])
@@ -75,11 +75,23 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("simple is default", func(t *testing.T) {
-		got := Box().Simple().String("x")
+		got := Box().BorderSimple().String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┌─┐", lines[0])
 		assert.Equal(t, "│x│", lines[1])
 		assert.Equal(t, "└─┘", lines[2])
+	})
+
+	t.Run("custom border", func(t *testing.T) {
+		custom := Border{
+			TopLeft: "+", TopRight: "+", BottomLeft: "+", BottomRight: "+",
+			Horizontal: "-", Vertical: "|",
+		}
+		got := Box().Border(custom).String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "+-+", lines[0])
+		assert.Equal(t, "|x|", lines[1])
+		assert.Equal(t, "+-+", lines[2])
 	})
 }
 
@@ -209,8 +221,8 @@ func TestBoxANSIContent(t *testing.T) {
 func TestBoxImmutability(t *testing.T) {
 	t.Run("border change does not affect original", func(t *testing.T) {
 		base := Box()
-		rounded := base.Rounded()
-		heavy := base.Heavy()
+		rounded := base.BorderRounded()
+		heavy := base.BorderHeavy()
 
 		baseLines := strings.Split(base.String("x"), "\n")
 		roundedLines := strings.Split(rounded.String("x"), "\n")
@@ -317,7 +329,7 @@ func TestBoxPrintMethods(t *testing.T) {
 
 func TestBoxConcurrent(t *testing.T) {
 	t.Run("shared box used from many goroutines", func(t *testing.T) {
-		b := Box().Rounded().Padding(1)
+		b := Box().BorderRounded().Padding(1)
 
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
@@ -341,8 +353,8 @@ func TestBoxConcurrent(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				rounded := base.Rounded()
-				heavy := base.Heavy()
+				rounded := base.BorderRounded()
+				heavy := base.BorderHeavy()
 
 				rLines := strings.Split(rounded.String("x"), "\n")
 				hLines := strings.Split(heavy.String("x"), "\n")

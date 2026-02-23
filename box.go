@@ -69,29 +69,36 @@ func (b *box) withCode(code string) BoxStyle {
 
 // --- Border style setters ---
 
-// Simple sets the border to a simple line style (┌─┐).
-func (b *box) Simple() BoxStyle {
+// Border sets a custom border using the provided [Border] struct.
+func (b *box) Border(border Border) BoxStyle {
+	cp := copyBox(b)
+	cp.border = border
+	return cp
+}
+
+// BorderSimple sets the border to a simple line style (┌─┐).
+func (b *box) BorderSimple() BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderSimple
 	return cp
 }
 
-// Rounded sets the border to a rounded style (╭─╮).
-func (b *box) Rounded() BoxStyle {
+// BorderRounded sets the border to a rounded style (╭─╮).
+func (b *box) BorderRounded() BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderRounded
 	return cp
 }
 
-// Double sets the border to a double line style (╔═╗).
-func (b *box) Double() BoxStyle {
+// BorderDouble sets the border to a double line style (╔═╗).
+func (b *box) BorderDouble() BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderDouble
 	return cp
 }
 
-// Heavy sets the border to a heavy line style (┏━┓).
-func (b *box) Heavy() BoxStyle {
+// BorderHeavy sets the border to a heavy line style (┏━┓).
+func (b *box) BorderHeavy() BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderHeavy
 	return cp
