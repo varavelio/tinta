@@ -664,3 +664,181 @@ func TestBoxPaddingMarginImmutability(t *testing.T) {
 		assert.Equal(t, true, strings.HasPrefix(marginedLines[0], "   ┌"))
 	})
 }
+
+// --- DisableTop ---
+
+func TestBoxDisableTop(t *testing.T) {
+	t.Run("hides top border row", func(t *testing.T) {
+		got := Box().DisableTop().String("hi")
+		lines := strings.Split(got, "\n")
+		// No top border — first line is content.
+		assert.Equal(t, "│hi│", lines[0])
+		assert.Equal(t, "└──┘", lines[1])
+	})
+
+	t.Run("with padding still hides top border", func(t *testing.T) {
+		got := Box().DisableTop().Padding(1).String("x")
+		lines := strings.Split(got, "\n")
+		// First line is top padding row (no top border).
+		assert.Equal(t, "│   │", lines[0])
+		assert.Equal(t, "│ x │", lines[1])
+		assert.Equal(t, "│   │", lines[2])
+		assert.Equal(t, "└───┘", lines[3])
+	})
+}
+
+// --- DisableBottom ---
+
+func TestBoxDisableBottom(t *testing.T) {
+	t.Run("hides bottom border row", func(t *testing.T) {
+		got := Box().DisableBottom().String("hi")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌──┐", lines[0])
+		assert.Equal(t, "│hi│", lines[1])
+		// No bottom border — string ends after content row + newline.
+		assert.Equal(t, 3, len(lines)) // top, content, trailing empty
+	})
+
+	t.Run("with padding still hides bottom border", func(t *testing.T) {
+		got := Box().DisableBottom().Padding(1).String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌───┐", lines[0])
+		assert.Equal(t, "│   │", lines[1])
+		assert.Equal(t, "│ x │", lines[2])
+		assert.Equal(t, "│   │", lines[3])
+		// No bottom border.
+		assert.Equal(t, 5, len(lines)) // 4 rows + trailing empty
+	})
+}
+
+// --- DisableLeft ---
+
+func TestBoxDisableLeft(t *testing.T) {
+	t.Run("hides left border glyphs", func(t *testing.T) {
+		got := Box().DisableLeft().String("hi")
+		lines := strings.Split(got, "\n")
+		// Left corners/verticals replaced with space.
+		assert.Equal(t, " ──┐", lines[0])
+		assert.Equal(t, " hi│", lines[1])
+		assert.Equal(t, " ──┘", lines[2])
+	})
+}
+
+// --- DisableRight ---
+
+func TestBoxDisableRight(t *testing.T) {
+	t.Run("hides right border glyphs", func(t *testing.T) {
+		got := Box().DisableRight().String("hi")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌── ", lines[0])
+		assert.Equal(t, "│hi ", lines[1])
+		assert.Equal(t, "└── ", lines[2])
+	})
+}
+
+// --- Combined disable ---
+
+func TestBoxDisableCombined(t *testing.T) {
+	t.Run("disable top and bottom leaves only content rows", func(t *testing.T) {
+		got := Box().DisableTop().DisableBottom().String("hi")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "│hi│", lines[0])
+		assert.Equal(t, 2, len(lines)) // content + trailing empty
+	})
+
+	t.Run("disable left and right removes verticals", func(t *testing.T) {
+		got := Box().DisableLeft().DisableRight().String("hi")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, " ── ", lines[0])
+		assert.Equal(t, " hi ", lines[1])
+		assert.Equal(t, " ── ", lines[2])
+	})
+
+	t.Run("disable all four sides", func(t *testing.T) {
+		got := Box().DisableTop().DisableBottom().DisableLeft().DisableRight().PaddingX(1).String("hi")
+		lines := strings.Split(got, "\n")
+		// Only content row remains, no border glyphs.
+		assert.Equal(t, "  hi  ", lines[0])
+		assert.Equal(t, 2, len(lines))
+	})
+
+	t.Run("disable top and left for open corner", func(t *testing.T) {
+		got := Box().DisableTop().DisableLeft().String("hi")
+		lines := strings.Split(got, "\n")
+		// No top row. Content row has space instead of left vertical.
+		assert.Equal(t, " hi│", lines[0])
+		assert.Equal(t, " ──┘", lines[1])
+	})
+
+	t.Run("disable bottom and right for shadow offset", func(t *testing.T) {
+		got := Box().DisableBottom().DisableRight().String("hi")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌── ", lines[0])
+		assert.Equal(t, "│hi ", lines[1])
+		assert.Equal(t, 3, len(lines))
+	})
+}
+
+// --- Disable immutability ---
+
+func TestBoxDisableImmutability(t *testing.T) {
+	t.Run("DisableTop does not affect original", func(t *testing.T) {
+		base := Box()
+		noTop := base.DisableTop()
+
+		baseLines := strings.Split(base.String("x"), "\n")
+		noTopLines := strings.Split(noTop.String("x"), "\n")
+
+		assert.Equal(t, "┌─┐", baseLines[0])  // base has top border
+		assert.Equal(t, "│x│", noTopLines[0]) // no top has content first
+		assert.Equal(t, 3, len(baseLines))    // top + content + bottom
+		assert.Equal(t, 2, len(noTopLines))   // content + bottom
+	})
+
+	t.Run("DisableLeft does not affect original", func(t *testing.T) {
+		base := Box()
+		noLeft := base.DisableLeft()
+
+		baseLines := strings.Split(base.String("x"), "\n")
+		noLeftLines := strings.Split(noLeft.String("x"), "\n")
+
+		assert.Equal(t, "┌─┐", baseLines[0])
+		assert.Equal(t, " ─┐", noLeftLines[0])
+	})
+
+	t.Run("DisableRight does not affect original", func(t *testing.T) {
+		base := Box()
+		noRight := base.DisableRight()
+
+		baseLines := strings.Split(base.String("x"), "\n")
+		noRightLines := strings.Split(noRight.String("x"), "\n")
+
+		assert.Equal(t, "┌─┐", baseLines[0])
+		assert.Equal(t, "┌─ ", noRightLines[0])
+	})
+
+	t.Run("DisableBottom does not affect original", func(t *testing.T) {
+		base := Box()
+		noBottom := base.DisableBottom()
+
+		baseGot := base.String("x")
+		noBottomGot := noBottom.String("x")
+
+		assert.Equal(t, true, strings.Contains(baseGot, "└─┘"))
+		assert.Equal(t, false, strings.Contains(noBottomGot, "└─┘"))
+	})
+}
+
+// --- Disable with colors ---
+
+func TestBoxDisableWithColors(t *testing.T) {
+	t.Run("disabled sides still apply style to visible parts", func(t *testing.T) {
+		ForceColors(true)
+		got := Box().DisableTop().Red().String("x")
+		lines := strings.Split(got, "\n")
+		// Content row should still have ANSI codes.
+		assert.Equal(t, true, strings.Contains(lines[0], "\x1b[31m"))
+		// No top border row at all.
+		assert.Equal(t, true, strings.Contains(lines[0], "x"))
+	})
+}

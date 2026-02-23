@@ -39,6 +39,10 @@ type box struct {
 	marginLeft   int
 	center       bool // center content lines horizontally
 	centerTrim   bool // trim whitespace from lines before centering
+	hideTop      bool // hide the top border row
+	hideBottom   bool // hide the bottom border row
+	hideLeft     bool // hide the left vertical border
+	hideRight    bool // hide the right vertical border
 }
 
 // BoxStyle is the public handle returned by [Box] and every chaining method.
@@ -236,6 +240,38 @@ func (b *box) CenterTrim() BoxStyle {
 	return cp
 }
 
+// --- Side visibility ---
+
+// DisableTop hides the top border row. The vertical borders on content
+// rows remain unchanged.
+func (b *box) DisableTop() BoxStyle {
+	cp := copyBox(b)
+	cp.hideTop = true
+	return cp
+}
+
+// DisableBottom hides the bottom border row.
+func (b *box) DisableBottom() BoxStyle {
+	cp := copyBox(b)
+	cp.hideBottom = true
+	return cp
+}
+
+// DisableLeft hides the left vertical border on all rows (top corner,
+// content, padding, and bottom corner).
+func (b *box) DisableLeft() BoxStyle {
+	cp := copyBox(b)
+	cp.hideLeft = true
+	return cp
+}
+
+// DisableRight hides the right vertical border on all rows.
+func (b *box) DisableRight() BoxStyle {
+	cp := copyBox(b)
+	cp.hideRight = true
+	return cp
+}
+
 // --- Colors (border + background) ---
 
 func (b *box) OnBlack() BoxStyle   { return b.withCode(cOnBlack) }
@@ -382,6 +418,17 @@ func (b *box) render(content string) string {
 	marginLeft := strings.Repeat(" ", b.marginLeft)
 	marginRight := strings.Repeat(" ", b.marginRight)
 
+	// Determine glyph replacements for disabled sides.
+	// When a side is hidden, its glyphs become spaces of equal visible width.
+	leftVert := b.border.Vertical
+	rightVert := b.border.Vertical
+	if b.hideLeft {
+		leftVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
+	}
+	if b.hideRight {
+		rightVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
+	}
+
 	var out strings.Builder
 
 	// Top margin.
@@ -390,15 +437,25 @@ func (b *box) render(content string) string {
 	}
 
 	// Top border: ┌───┐
-	topBar := b.border.TopLeft + strings.Repeat(b.border.Horizontal, innerW) + b.border.TopRight
-	out.WriteString(marginLeft)
-	out.WriteString(b.wrapStyle(topBar))
-	out.WriteString(marginRight)
-	out.WriteByte('\n')
+	if !b.hideTop {
+		tl := b.border.TopLeft
+		tr := b.border.TopRight
+		if b.hideLeft {
+			tl = strings.Repeat(" ", visibleWidth(b.border.TopLeft))
+		}
+		if b.hideRight {
+			tr = strings.Repeat(" ", visibleWidth(b.border.TopRight))
+		}
+		topBar := tl + strings.Repeat(b.border.Horizontal, innerW) + tr
+		out.WriteString(marginLeft)
+		out.WriteString(b.wrapStyle(topBar))
+		out.WriteString(marginRight)
+		out.WriteByte('\n')
+	}
 
 	// Top padding rows.
 	for i := 0; i < b.padTop; i++ {
-		padLine := b.border.Vertical + strings.Repeat(" ", innerW) + b.border.Vertical
+		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
 		out.WriteString(marginLeft)
 		out.WriteString(b.wrapStyle(padLine))
 		out.WriteString(marginRight)
@@ -423,11 +480,11 @@ func (b *box) render(content string) string {
 			}
 		}
 
-		row := b.border.Vertical +
+		row := leftVert +
 			strings.Repeat(" ", b.padLeft+leftPad) +
 			line +
 			strings.Repeat(" ", rightPad+b.padRight) +
-			b.border.Vertical
+			rightVert
 		out.WriteString(marginLeft)
 		out.WriteString(b.wrapStyle(row))
 		out.WriteString(marginRight)
@@ -436,7 +493,7 @@ func (b *box) render(content string) string {
 
 	// Bottom padding rows.
 	for i := 0; i < b.padBottom; i++ {
-		padLine := b.border.Vertical + strings.Repeat(" ", innerW) + b.border.Vertical
+		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
 		out.WriteString(marginLeft)
 		out.WriteString(b.wrapStyle(padLine))
 		out.WriteString(marginRight)
@@ -444,10 +501,20 @@ func (b *box) render(content string) string {
 	}
 
 	// Bottom border: └───┘
-	botBar := b.border.BottomLeft + strings.Repeat(b.border.Horizontal, innerW) + b.border.BottomRight
-	out.WriteString(marginLeft)
-	out.WriteString(b.wrapStyle(botBar))
-	out.WriteString(marginRight)
+	if !b.hideBottom {
+		bl := b.border.BottomLeft
+		br := b.border.BottomRight
+		if b.hideLeft {
+			bl = strings.Repeat(" ", visibleWidth(b.border.BottomLeft))
+		}
+		if b.hideRight {
+			br = strings.Repeat(" ", visibleWidth(b.border.BottomRight))
+		}
+		botBar := bl + strings.Repeat(b.border.Horizontal, innerW) + br
+		out.WriteString(marginLeft)
+		out.WriteString(b.wrapStyle(botBar))
+		out.WriteString(marginRight)
+	}
 
 	// Bottom margin.
 	for i := 0; i < b.marginBottom; i++ {
