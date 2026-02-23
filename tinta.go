@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 )
 
 const cReset = "\x1b[0m"
@@ -66,18 +67,41 @@ const (
 	cOnBrightWhite   = "107"
 )
 
-// Package-level state.
+// Package-level state, protected by mu.
 var (
+	mu      sync.RWMutex
 	output  io.Writer = os.Stdout
 	enabled           = detectColor()
 )
 
 // SetOutput changes the default writer used by [Style.Print], [Style.Println]
-// and [Style.Printf]. It is not safe for concurrent use.
-func SetOutput(w io.Writer) { output = w }
+// and [Style.Printf]. It is safe for concurrent use.
+func SetOutput(w io.Writer) {
+	mu.Lock()
+	output = w
+	mu.Unlock()
+}
 
-// ForceColors overrides automatic detection.
-func ForceColors(on bool) { enabled = on }
+// ForceColors overrides automatic detection. It is safe for concurrent use.
+func ForceColors(on bool) {
+	mu.Lock()
+	enabled = on
+	mu.Unlock()
+}
+
+func getOutput() io.Writer {
+	mu.RLock()
+	w := output
+	mu.RUnlock()
+	return w
+}
+
+func isEnabled() bool {
+	mu.RLock()
+	v := enabled
+	mu.RUnlock()
+	return v
+}
 
 // style is intentionally unexported. Users interact with it through the
 // exported Style type alias below and the package-level constructors.
@@ -173,17 +197,17 @@ func (s *style) Sprintf(format string, a ...any) string {
 
 // Print writes the styled text to the default output.
 func (s *style) Print(text string) {
-	fmt.Fprint(output, s.render(text))
+	fmt.Fprint(getOutput(), s.render(text))
 }
 
 // Printf formats and writes the styled text to the default output.
 func (s *style) Printf(format string, a ...any) {
-	fmt.Fprint(output, s.render(fmt.Sprintf(format, a...)))
+	fmt.Fprint(getOutput(), s.render(fmt.Sprintf(format, a...)))
 }
 
 // Println writes the styled text followed by a newline to the default output.
 func (s *style) Println(text string) {
-	fmt.Fprintln(output, s.render(text))
+	fmt.Fprintln(getOutput(), s.render(text))
 }
 
 // Fprint writes the styled text to w.
@@ -204,7 +228,7 @@ func (s *style) Fprintln(w io.Writer, text string) {
 // --- internals ---
 
 func (s *style) render(text string) string {
-	if !enabled || len(s.codes) == 0 {
+	if !isEnabled() || len(s.codes) == 0 {
 		return text
 	}
 
