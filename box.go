@@ -24,6 +24,46 @@ var (
 	BorderHeavy   = Border{"┏", "┓", "┗", "┛", "━", "┃"}
 )
 
+// ShadowStyle defines the glyphs used to draw a shadow around a box.
+// The structure mirrors [Border]: corners, horizontal, and vertical pieces.
+type ShadowStyle struct {
+	TopLeft     string
+	TopRight    string
+	BottomLeft  string
+	BottomRight string
+	Horizontal  string
+	Vertical    string
+}
+
+// Predefined shadow styles.
+var (
+	// ShadowLight uses light shade characters (░).
+	ShadowLight = ShadowStyle{"░", "░", "░", "░", "░", "░"}
+
+	// ShadowMedium uses medium shade characters (▒).
+	ShadowMedium = ShadowStyle{"▒", "▒", "▒", "▒", "▒", "▒"}
+
+	// ShadowDark uses dark shade characters (▓).
+	ShadowDark = ShadowStyle{"▓", "▓", "▓", "▓", "▓", "▓"}
+
+	// ShadowBlock uses full block characters (█).
+	ShadowBlock = ShadowStyle{"█", "█", "█", "█", "█", "█"}
+)
+
+// ShadowPosition determines the direction in which the shadow is cast.
+type ShadowPosition int
+
+const (
+	// ShadowBottomRight places the shadow below and to the right of the box.
+	ShadowBottomRight ShadowPosition = iota
+	// ShadowBottomLeft places the shadow below and to the left.
+	ShadowBottomLeft
+	// ShadowTopRight places the shadow above and to the right.
+	ShadowTopRight
+	// ShadowTopLeft places the shadow above and to the left.
+	ShadowTopLeft
+)
+
 // box is intentionally unexported. Users interact with it through the
 // exported BoxStyle type alias and the [Box] constructor.
 type box struct {
@@ -37,12 +77,18 @@ type box struct {
 	marginRight  int
 	marginBottom int
 	marginLeft   int
-	center       bool // center content lines horizontally
-	centerTrim   bool // trim whitespace from lines before centering
-	hideTop      bool // hide the top border row
-	hideBottom   bool // hide the bottom border row
-	hideLeft     bool // hide the left vertical border
-	hideRight    bool // hide the right vertical border
+	center       bool             // center all content lines horizontally
+	centerTrim   bool             // trim whitespace from lines before centering
+	centerLines  map[int]struct{} // specific line indices to center (0-based)
+	centerFirst  bool             // center the first content line
+	centerLast   bool             // center the last content line
+	hideTop      bool             // hide the top border row
+	hideBottom   bool             // hide the bottom border row
+	hideLeft     bool             // hide the left vertical border
+	hideRight    bool             // hide the right vertical border
+	shadow       *ShadowStyle     // nil means no shadow
+	shadowPos    ShadowPosition   // direction of the shadow
+	shadowCodes  []string         // ANSI SGR codes for the shadow glyphs
 }
 
 // BoxStyle is the public handle returned by [Box] and every chaining method.
@@ -54,12 +100,27 @@ func Box() BoxStyle {
 	return &box{border: BorderSimple}
 }
 
-// copyBox returns a deep copy of the box, including the codes slice.
+// copyBox returns a deep copy of the box, including the codes slice,
+// centerLines map, and shadow configuration.
 func copyBox(b *box) *box {
 	cp := *b
 	if len(b.codes) > 0 {
 		cp.codes = make([]string, len(b.codes))
 		copy(cp.codes, b.codes)
+	}
+	if len(b.centerLines) > 0 {
+		cp.centerLines = make(map[int]struct{}, len(b.centerLines))
+		for k, v := range b.centerLines {
+			cp.centerLines[k] = v
+		}
+	}
+	if b.shadow != nil {
+		s := *b.shadow
+		cp.shadow = &s
+	}
+	if len(b.shadowCodes) > 0 {
+		cp.shadowCodes = make([]string, len(b.shadowCodes))
+		copy(cp.shadowCodes, b.shadowCodes)
 	}
 	return &cp
 }
@@ -240,6 +301,34 @@ func (b *box) CenterTrim() BoxStyle {
 	return cp
 }
 
+// CenterLine marks the line at index n (0-based) for horizontal centering.
+// If n is out of bounds at render time, the call is silently ignored.
+// This can be called multiple times to center several specific lines.
+func (b *box) CenterLine(n int) BoxStyle {
+	cp := copyBox(b)
+	if cp.centerLines == nil {
+		cp.centerLines = make(map[int]struct{})
+	}
+	cp.centerLines[n] = struct{}{}
+	return cp
+}
+
+// CenterFirstLine centers the first content line (index 0).
+// This is a convenience shortcut useful for centering titles.
+func (b *box) CenterFirstLine() BoxStyle {
+	cp := copyBox(b)
+	cp.centerFirst = true
+	return cp
+}
+
+// CenterLastLine centers the last content line.
+// The line count is determined at render time.
+func (b *box) CenterLastLine() BoxStyle {
+	cp := copyBox(b)
+	cp.centerLast = true
+	return cp
+}
+
 // --- Side visibility ---
 
 // DisableTop hides the top border row. The vertical borders on content
@@ -269,6 +358,53 @@ func (b *box) DisableLeft() BoxStyle {
 func (b *box) DisableRight() BoxStyle {
 	cp := copyBox(b)
 	cp.hideRight = true
+	return cp
+}
+
+// --- Shadow ---
+
+// Shadow enables a shadow effect in the given direction using
+// [ShadowLight] glyphs and dim styling by default.
+func (b *box) Shadow(pos ShadowPosition) BoxStyle {
+	cp := copyBox(b)
+	s := ShadowLight
+	cp.shadow = &s
+	cp.shadowPos = pos
+	if len(cp.shadowCodes) == 0 {
+		cp.shadowCodes = []string{cBrightBlack}
+	}
+	return cp
+}
+
+// ShadowSty sets a custom [ShadowStyle] for the shadow glyphs.
+// If no shadow has been enabled yet, it enables one at [ShadowBottomRight].
+func (b *box) ShadowSty(s ShadowStyle) BoxStyle {
+	cp := copyBox(b)
+	cp.shadow = &s
+	if len(cp.shadowCodes) == 0 {
+		cp.shadowCodes = []string{cBrightBlack}
+	}
+	return cp
+}
+
+// ShadowDim applies the dim modifier to the shadow.
+func (b *box) ShadowDim() BoxStyle {
+	cp := copyBox(b)
+	cp.shadowCodes = append(cp.shadowCodes, cDim)
+	return cp
+}
+
+// ShadowBlack sets the shadow foreground to black.
+func (b *box) ShadowBlack() BoxStyle {
+	cp := copyBox(b)
+	cp.shadowCodes = append(cp.shadowCodes, cBlack)
+	return cp
+}
+
+// ShadowBrightBlack sets the shadow foreground to bright black.
+func (b *box) ShadowBrightBlack() BoxStyle {
+	cp := copyBox(b)
+	cp.shadowCodes = append(cp.shadowCodes, cBrightBlack)
 	return cp
 }
 
@@ -361,13 +497,14 @@ func (b *box) Fprintln(w io.Writer, content string) (int, error) {
 
 // --- Internals ---
 
-// wrapStyle wraps s in ANSI codes if colors are enabled and codes are present.
-func (b *box) wrapStyle(s string) string {
-	if !isEnabled() || len(b.codes) == 0 {
+// wrapCodes wraps s in the given ANSI SGR codes. Returns s unchanged if
+// colors are disabled or codes is empty.
+func wrapCodes(s string, codes []string) string {
+	if !isEnabled() || len(codes) == 0 {
 		return s
 	}
 	size := 2
-	for i, c := range b.codes {
+	for i, c := range codes {
 		if i > 0 {
 			size++
 		}
@@ -380,7 +517,7 @@ func (b *box) wrapStyle(s string) string {
 	var buf strings.Builder
 	buf.Grow(size)
 	buf.WriteString("\x1b[")
-	for i, c := range b.codes {
+	for i, c := range codes {
 		if i > 0 {
 			buf.WriteByte(';')
 		}
@@ -390,6 +527,16 @@ func (b *box) wrapStyle(s string) string {
 	buf.WriteString(s)
 	buf.WriteString(cReset)
 	return buf.String()
+}
+
+// wrapStyle wraps s in the box's border/background ANSI codes.
+func (b *box) wrapStyle(s string) string {
+	return wrapCodes(s, b.codes)
+}
+
+// wrapShadow wraps s in the box's shadow ANSI codes.
+func (b *box) wrapShadow(s string) string {
+	return wrapCodes(s, b.shadowCodes)
 }
 
 // render builds the full box frame around content.
@@ -415,11 +562,7 @@ func (b *box) render(content string) string {
 	// Inner width = content width + horizontal padding.
 	innerW := maxW + b.padLeft + b.padRight
 
-	marginLeft := strings.Repeat(" ", b.marginLeft)
-	marginRight := strings.Repeat(" ", b.marginRight)
-
 	// Determine glyph replacements for disabled sides.
-	// When a side is hidden, its glyphs become spaces of equal visible width.
 	leftVert := b.border.Vertical
 	rightVert := b.border.Vertical
 	if b.hideLeft {
@@ -429,12 +572,8 @@ func (b *box) render(content string) string {
 		rightVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
 	}
 
-	var out strings.Builder
-
-	// Top margin.
-	for i := 0; i < b.marginTop; i++ {
-		out.WriteByte('\n')
-	}
+	// Collect box rows (without margin, without trailing \n).
+	var boxRows []string
 
 	// Top border: ┌───┐
 	if !b.hideTop {
@@ -447,29 +586,36 @@ func (b *box) render(content string) string {
 			tr = strings.Repeat(" ", visibleWidth(b.border.TopRight))
 		}
 		topBar := tl + strings.Repeat(b.border.Horizontal, innerW) + tr
-		out.WriteString(marginLeft)
-		out.WriteString(b.wrapStyle(topBar))
-		out.WriteString(marginRight)
-		out.WriteByte('\n')
+		boxRows = append(boxRows, b.wrapStyle(topBar))
 	}
 
 	// Top padding rows.
 	for i := 0; i < b.padTop; i++ {
 		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
-		out.WriteString(marginLeft)
-		out.WriteString(b.wrapStyle(padLine))
-		out.WriteString(marginRight)
-		out.WriteByte('\n')
+		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 
 	// Content rows.
-	for _, line := range lines {
+	lastIdx := len(lines) - 1
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
 		vis := visibleWidth(line)
 		availW := innerW - b.padLeft - b.padRight
 
+		shouldCenter := b.center
+		if !shouldCenter {
+			_, inSet := b.centerLines[i]
+			shouldCenter = inSet
+		}
+		if !shouldCenter && b.centerFirst && i == 0 {
+			shouldCenter = true
+		}
+		if !shouldCenter && b.centerLast && i == lastIdx {
+			shouldCenter = true
+		}
+
 		var leftPad, rightPad int
-		if b.center && vis < availW {
-			// Center within the available content area.
+		if shouldCenter && vis < availW {
 			total := availW - vis
 			leftPad = total / 2
 			rightPad = total - leftPad
@@ -480,24 +626,17 @@ func (b *box) render(content string) string {
 			}
 		}
 
-		row := leftVert +
-			strings.Repeat(" ", b.padLeft+leftPad) +
+		// Chrome parts wrapped individually to prevent nested ANSI corruption.
+		row := b.wrapStyle(leftVert+strings.Repeat(" ", b.padLeft+leftPad)) +
 			line +
-			strings.Repeat(" ", rightPad+b.padRight) +
-			rightVert
-		out.WriteString(marginLeft)
-		out.WriteString(b.wrapStyle(row))
-		out.WriteString(marginRight)
-		out.WriteByte('\n')
+			b.wrapStyle(strings.Repeat(" ", rightPad+b.padRight)+rightVert)
+		boxRows = append(boxRows, row)
 	}
 
 	// Bottom padding rows.
 	for i := 0; i < b.padBottom; i++ {
 		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
-		out.WriteString(marginLeft)
-		out.WriteString(b.wrapStyle(padLine))
-		out.WriteString(marginRight)
-		out.WriteByte('\n')
+		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 
 	// Bottom border: └───┘
@@ -511,15 +650,137 @@ func (b *box) render(content string) string {
 			br = strings.Repeat(" ", visibleWidth(b.border.BottomRight))
 		}
 		botBar := bl + strings.Repeat(b.border.Horizontal, innerW) + br
-		out.WriteString(marginLeft)
-		out.WriteString(b.wrapStyle(botBar))
-		out.WriteString(marginRight)
+		boxRows = append(boxRows, b.wrapStyle(botBar))
 	}
 
-	// Bottom margin.
+	// Compute visible width of the box (from the first row).
+	boxVisW := 0
+	if len(boxRows) > 0 {
+		boxVisW = visibleWidth(boxRows[0])
+	}
+
+	// Track the index of the bottom border row (if present) before shadow
+	// is applied. This determines trailing-newline behavior.
+	bottomBorderIdx := -1
+	if !b.hideBottom {
+		bottomBorderIdx = len(boxRows) - 1
+	}
+
+	// Apply shadow if enabled.
+	hasShadow := b.shadow != nil
+	if hasShadow {
+		boxRows = b.applyShadow(boxRows, boxVisW)
+	}
+
+	// Assemble final output with margins.
+	marginLeft := strings.Repeat(" ", b.marginLeft)
+	marginRight := strings.Repeat(" ", b.marginRight)
+
+	var out strings.Builder
+
+	for i := 0; i < b.marginTop; i++ {
+		out.WriteByte('\n')
+	}
+
+	lastRow := len(boxRows) - 1
+	for i := 0; i < len(boxRows); i++ {
+		out.WriteString(marginLeft)
+		out.WriteString(boxRows[i])
+		out.WriteString(marginRight)
+		// The final rendered row never gets a trailing \n.
+		// Without shadow: the bottom border (if present) is final.
+		// With shadow: the shadow's last row is final.
+		// When the bottom border is hidden and there's no shadow,
+		// the last content/padding row still gets \n (legacy behavior).
+		if hasShadow {
+			// With shadow, the very last row is the shadow's last row.
+			if i < lastRow {
+				out.WriteByte('\n')
+			}
+		} else if bottomBorderIdx >= 0 && i == bottomBorderIdx {
+			// Bottom border is present and this IS it — no trailing \n.
+		} else {
+			out.WriteByte('\n')
+		}
+	}
+
 	for i := 0; i < b.marginBottom; i++ {
 		out.WriteByte('\n')
 	}
 
 	return out.String()
+}
+
+// applyShadow adds shadow glyphs to the collected box rows based on
+// the shadow position. It returns a new slice with the shadow applied.
+func (b *box) applyShadow(rows []string, boxVisW int) []string {
+	s := b.shadow
+	n := len(rows)
+	if n == 0 {
+		return rows
+	}
+
+	// Shadow glyph helpers — styled individually.
+	shadowV := b.wrapShadow(s.Vertical)
+
+	// Visible width of the vertical glyph (usually 1).
+	vertW := visibleWidth(s.Vertical)
+	spacer := strings.Repeat(" ", vertW)
+
+	// Horizontal count for the bottom/top shadow row.
+	horzW := visibleWidth(s.Horizontal)
+	hCount := boxVisW / horzW
+	if hCount < 1 {
+		hCount = 1
+	}
+
+	// Build a styled bottom/top shadow row. The row spans the box width
+	// plus the shadow column, using the appropriate corner at the end.
+	buildShadowRow := func(corner, indent string, cornerFirst bool) string {
+		hBar := strings.Repeat(s.Horizontal, hCount-1)
+		if cornerFirst {
+			return b.wrapShadow(corner+hBar) + indent
+		}
+		return indent + b.wrapShadow(hBar+corner)
+	}
+
+	switch b.shadowPos {
+	case ShadowBottomRight:
+		result := make([]string, 0, n+1)
+		result = append(result, rows[0]+spacer)
+		for i := 1; i < n; i++ {
+			result = append(result, rows[i]+shadowV)
+		}
+		result = append(result, buildShadowRow(s.BottomRight, spacer, false))
+		return result
+
+	case ShadowBottomLeft:
+		result := make([]string, 0, n+1)
+		result = append(result, spacer+rows[0])
+		for i := 1; i < n; i++ {
+			result = append(result, shadowV+rows[i])
+		}
+		result = append(result, buildShadowRow(s.BottomLeft, spacer, true))
+		return result
+
+	case ShadowTopRight:
+		result := make([]string, 0, n+1)
+		result = append(result, buildShadowRow(s.TopRight, spacer, false))
+		for i := 0; i < n-1; i++ {
+			result = append(result, rows[i]+shadowV)
+		}
+		result = append(result, rows[n-1]+spacer)
+		return result
+
+	case ShadowTopLeft:
+		result := make([]string, 0, n+1)
+		result = append(result, buildShadowRow(s.TopLeft, spacer, true))
+		for i := 0; i < n-1; i++ {
+			result = append(result, shadowV+rows[i])
+		}
+		result = append(result, spacer+rows[n-1])
+		return result
+	}
+
+	return rows
 }

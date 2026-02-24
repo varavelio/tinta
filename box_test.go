@@ -842,3 +842,436 @@ func TestBoxDisableWithColors(t *testing.T) {
 		assert.Equal(t, true, strings.Contains(lines[0], "x"))
 	})
 }
+
+// --- Nested box color robustness ---
+
+func TestBoxNestedColorRobustness(t *testing.T) {
+	t.Run("inner box resets do not corrupt outer border", func(t *testing.T) {
+		ForceColors(true)
+		inner := Box().BorderRounded().Blue().String("hello")
+		outer := Box().BorderDouble().Red().String(inner)
+
+		rows := strings.Split(outer, "\n")
+		// The outer box content rows contain the inner box lines.
+		// Each content row must start and end with the outer style (red).
+		// The right border "║" must be wrapped in its own red ANSI
+		// sequence, reapplied AFTER the inner box's resets.
+		for _, row := range rows {
+			if row == "" {
+				continue
+			}
+			// Every non-empty row must contain the outer red code.
+			assert.Equal(t, true, strings.Contains(row, "\x1b[31m"))
+			if strings.Contains(row, "hello") {
+				// This is a content row. The right chrome is wrapped
+				// separately: ...<inner resets>\x1b[31m║\x1b[0m
+				// Count occurrences of outer code — must appear at least
+				// twice (once for left chrome, once for right chrome).
+				count := strings.Count(row, "\x1b[31m")
+				assert.Equal(t, true, count >= 2)
+			}
+		}
+	})
+
+	t.Run("inner styled text resets do not corrupt outer border", func(t *testing.T) {
+		ForceColors(true)
+		styledContent := Text().Red().Bold().String("styled")
+		outer := Box().Green().String(styledContent)
+
+		rows := strings.Split(outer, "\n")
+		for _, row := range rows {
+			if row == "" {
+				continue
+			}
+			// Every row must contain green code.
+			assert.Equal(t, true, strings.Contains(row, "\x1b[32m"))
+			if strings.Contains(row, "styled") {
+				// Right chrome must be re-styled after the content's reset.
+				// The green code must appear at least twice (left + right chrome).
+				count := strings.Count(row, "\x1b[32m")
+				assert.Equal(t, true, count >= 2)
+			}
+		}
+	})
+
+	t.Run("deeply nested boxes preserve all styles", func(t *testing.T) {
+		ForceColors(true)
+		innermost := Box().Blue().String("deep")
+		middle := Box().Green().String(innermost)
+		outermost := Box().Red().String(middle)
+
+		rows := strings.Split(outermost, "\n")
+		// The outermost box must have red styling on every row.
+		for _, row := range rows {
+			if row == "" {
+				continue
+			}
+			assert.Equal(t, true, strings.Contains(row, "\x1b[31m"))
+		}
+	})
+
+	t.Run("nested box with padding preserves outer background", func(t *testing.T) {
+		ForceColors(true)
+		inner := Box().Blue().String("x")
+		outer := Box().OnWhite().Red().PaddingX(1).String(inner)
+
+		rows := strings.Split(outer, "\n")
+		for _, row := range rows {
+			if row == "" {
+				continue
+			}
+			// Every row must contain the outer style (on-white + red).
+			// Code order depends on method call order: OnWhite (47) then Red (31).
+			assert.Equal(t, true, strings.Contains(row, "\x1b[47;31m"))
+		}
+	})
+
+	t.Run("no style box with styled content passes through cleanly", func(t *testing.T) {
+		ForceColors(true)
+		styledContent := Text().Red().String("red text")
+		// Outer box has no style — content should pass through as-is.
+		outer := Box().String(styledContent)
+
+		rows := strings.Split(outer, "\n")
+		for _, row := range rows {
+			if strings.Contains(row, "red text") {
+				assert.Equal(t, true, strings.Contains(row, "\x1b[31m"))
+			}
+		}
+	})
+}
+
+// --- Selective line centering ---
+
+func TestBoxCenterLine(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("center specific line by index", func(t *testing.T) {
+		got := Box().CenterLine(0).String("hi\nworld!")
+		lines := strings.Split(got, "\n")
+		// Line 0 ("hi") should be centered within the width of "world!" (6 chars).
+		// "hi" is 2 chars, so 4 extra spaces: 2 left + 2 right.
+		assert.Equal(t, true, strings.Contains(lines[1], "│  hi  │"))
+		// Line 1 ("world!") should be left-aligned (not centered).
+		assert.Equal(t, true, strings.Contains(lines[2], "│world!│"))
+	})
+
+	t.Run("center multiple specific lines", func(t *testing.T) {
+		got := Box().CenterLine(0).CenterLine(2).String("a\nbb\nc")
+		lines := strings.Split(got, "\n")
+		// Width is 2 (from "bb"). "a" and "c" are 1 char each — 1 space to distribute.
+		// "a": 0 left, 1 right (1/2=0). Wait — total=1, leftPad=0, rightPad=1.
+		// Actually let me check: availW=2, vis("a")=1, total=1, leftPad=0, rightPad=1.
+		// So "a" gets " a " — no, leftPad=0 means: "│" + " "*0 + "a" + " "*1 + "│" = "│a │"
+		// Hmm, that's not really "centered". With total=1, leftPad=total/2=0, rightPad=1.
+		// That's the same as left-aligned with rightPad=1. That's correct — integer division
+		// rounds down, so odd remainders lean right.
+		assert.Equal(t, true, strings.Contains(lines[1], "│a │"))
+		assert.Equal(t, true, strings.Contains(lines[2], "│bb│"))
+		assert.Equal(t, true, strings.Contains(lines[3], "│c │"))
+	})
+
+	t.Run("out of bounds index is silently ignored", func(t *testing.T) {
+		got := Box().CenterLine(99).String("hello")
+		lines := strings.Split(got, "\n")
+		// Only 1 line — index 99 doesn't exist, no centering applied.
+		assert.Equal(t, true, strings.Contains(lines[1], "│hello│"))
+	})
+
+	t.Run("negative index is silently ignored", func(t *testing.T) {
+		got := Box().CenterLine(-1).String("hello")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, true, strings.Contains(lines[1], "│hello│"))
+	})
+
+	t.Run("CenterLine does not affect other lines", func(t *testing.T) {
+		got := Box().CenterLine(1).String("long line\nhi")
+		lines := strings.Split(got, "\n")
+		// Line 0 ("long line") is left-aligned, no extra padding.
+		assert.Equal(t, true, strings.Contains(lines[1], "│long line│"))
+		// Line 1 ("hi") centered within width 9: total=7, left=3, right=4.
+		assert.Equal(t, true, strings.Contains(lines[2], "│   hi    │"))
+	})
+}
+
+func TestBoxCenterFirstLine(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("centers only the first line", func(t *testing.T) {
+		got := Box().CenterFirstLine().String("Title\nLeft-aligned content")
+		lines := strings.Split(got, "\n")
+		// Width is 20 (from "Left-aligned content"). "Title" is 5 chars.
+		// total=15, leftPad=7, rightPad=8.
+		assert.Equal(t, true, strings.Contains(lines[1], "│       Title        │"))
+		assert.Equal(t, true, strings.Contains(lines[2], "│Left-aligned content│"))
+	})
+
+	t.Run("single line still centers", func(t *testing.T) {
+		// With a single line, there's nothing wider, so no centering effect.
+		got := Box().CenterFirstLine().String("only")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, true, strings.Contains(lines[1], "│only│"))
+	})
+}
+
+func TestBoxCenterLastLine(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("centers only the last line", func(t *testing.T) {
+		got := Box().CenterLastLine().String("Left-aligned content\nEnd")
+		lines := strings.Split(got, "\n")
+		// Width is 20. "End" is 3 chars.
+		// total=17, leftPad=8, rightPad=9.
+		assert.Equal(t, true, strings.Contains(lines[1], "│Left-aligned content│"))
+		assert.Equal(t, true, strings.Contains(lines[2], "│        End         │"))
+	})
+}
+
+func TestBoxCenterLineWithCenter(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("Center() overrides CenterLine — all lines centered", func(t *testing.T) {
+		got := Box().CenterLine(0).Center().String("a\nbb")
+		lines := strings.Split(got, "\n")
+		// Center() centers all lines, so both are centered.
+		assert.Equal(t, true, strings.Contains(lines[1], "│a │"))
+		assert.Equal(t, true, strings.Contains(lines[2], "│bb│"))
+	})
+}
+
+func TestBoxCenterLineImmutability(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("CenterLine does not modify original", func(t *testing.T) {
+		base := Box()
+		centered := base.CenterLine(0)
+
+		baseGot := base.String("a\nbb")
+		centeredGot := centered.String("a\nbb")
+
+		// Base should be left-aligned.
+		baseLines := strings.Split(baseGot, "\n")
+		assert.Equal(t, true, strings.Contains(baseLines[1], "│a │"))
+
+		// Centered version should center line 0.
+		centeredLines := strings.Split(centeredGot, "\n")
+		assert.Equal(t, true, strings.Contains(centeredLines[1], "│a │"))
+		// With width 2 and "a" being 1 char, total=1, leftPad=0.
+		// Both look the same because the centering space is only 1 char.
+		// Use a wider example to see the difference.
+	})
+
+	t.Run("CenterLine does not modify original with wider content", func(t *testing.T) {
+		base := Box()
+		centered := base.CenterLine(0)
+
+		baseGot := base.String("hi\nworld!")
+		centeredGot := centered.String("hi\nworld!")
+
+		// Base: "hi" left-aligned within width 6 → "│hi    │"
+		baseLines := strings.Split(baseGot, "\n")
+		assert.Equal(t, true, strings.Contains(baseLines[1], "│hi    │"))
+
+		// Centered: "hi" centered within width 6 → "│  hi  │"
+		centeredLines := strings.Split(centeredGot, "\n")
+		assert.Equal(t, true, strings.Contains(centeredLines[1], "│  hi  │"))
+	})
+
+	t.Run("CenterFirstLine does not modify original", func(t *testing.T) {
+		base := Box()
+		_ = base.CenterFirstLine()
+
+		got := base.String("hi\nworld!")
+		baseLines := strings.Split(got, "\n")
+		assert.Equal(t, true, strings.Contains(baseLines[1], "│hi    │"))
+	})
+}
+
+// --- Shadow ---
+
+func TestBoxShadowBottomRight(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("basic shadow structure", func(t *testing.T) {
+		got := Box().Shadow(ShadowBottomRight).String("hi")
+		rows := strings.Split(got, "\n")
+		// Expected:
+		// ┌──┐      (row 0, + space for shadow column)
+		// │hi│░     (row 1, shadow vertical)
+		// └──┘░     (row 2, shadow vertical)
+		//  ░░░░░    (row 3, shadow bottom row)
+		assert.Equal(t, 4, len(rows))
+		// Row 0: top border + space.
+		assert.Equal(t, true, strings.HasPrefix(rows[0], "┌──┐"))
+		assert.Equal(t, true, strings.HasSuffix(rows[0], " "))
+		// Row 1: content + shadow vertical.
+		assert.Equal(t, true, strings.Contains(rows[1], "│hi│"))
+		assert.Equal(t, true, strings.HasSuffix(rows[1], "░"))
+		// Row 2: bottom border + shadow vertical.
+		assert.Equal(t, true, strings.Contains(rows[2], "└──┘"))
+		assert.Equal(t, true, strings.HasSuffix(rows[2], "░"))
+		// Row 3: space + horizontals.
+		assert.Equal(t, true, strings.HasPrefix(rows[3], " "))
+		assert.Equal(t, true, strings.Contains(rows[3], "░░░░"))
+	})
+
+	t.Run("shadow adds one extra row and one extra column", func(t *testing.T) {
+		noShadow := Box().String("test")
+		withShadow := Box().Shadow(ShadowBottomRight).String("test")
+
+		noRows := strings.Split(noShadow, "\n")
+		shadowRows := strings.Split(withShadow, "\n")
+
+		// Shadow adds one extra row.
+		assert.Equal(t, len(noRows)+1, len(shadowRows))
+
+		// Each shadow row is 1 char wider than the non-shadow row.
+		for i := 0; i < len(noRows); i++ {
+			noW := visibleWidth(noRows[i])
+			shW := visibleWidth(shadowRows[i])
+			assert.Equal(t, noW+1, shW)
+		}
+	})
+}
+
+func TestBoxShadowBottomLeft(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("basic shadow structure", func(t *testing.T) {
+		got := Box().Shadow(ShadowBottomLeft).String("hi")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, 4, len(rows))
+		// Row 0: space + top border.
+		assert.Equal(t, true, strings.HasPrefix(rows[0], " "))
+		assert.Equal(t, true, strings.Contains(rows[0], "┌──┐"))
+		// Row 1: shadow vertical + content.
+		assert.Equal(t, true, strings.HasPrefix(rows[1], "░"))
+		assert.Equal(t, true, strings.Contains(rows[1], "│hi│"))
+		// Row 2: shadow vertical + bottom border.
+		assert.Equal(t, true, strings.HasPrefix(rows[2], "░"))
+		// Row 3: shadow bottom row + space.
+		assert.Equal(t, true, strings.HasSuffix(rows[3], " "))
+		assert.Equal(t, true, strings.Contains(rows[3], "░░░░"))
+	})
+}
+
+func TestBoxShadowTopRight(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("basic shadow structure", func(t *testing.T) {
+		got := Box().Shadow(ShadowTopRight).String("hi")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, 4, len(rows))
+		// Row 0: shadow top row.
+		assert.Equal(t, true, strings.HasPrefix(rows[0], " "))
+		assert.Equal(t, true, strings.Contains(rows[0], "░░░░"))
+		// Row 1: top border + shadow vertical.
+		assert.Equal(t, true, strings.Contains(rows[1], "┌──┐"))
+		assert.Equal(t, true, strings.HasSuffix(rows[1], "░"))
+		// Row 2: content + shadow vertical.
+		assert.Equal(t, true, strings.Contains(rows[2], "│hi│"))
+		assert.Equal(t, true, strings.HasSuffix(rows[2], "░"))
+		// Row 3: bottom border + space.
+		assert.Equal(t, true, strings.Contains(rows[3], "└──┘"))
+		assert.Equal(t, true, strings.HasSuffix(rows[3], " "))
+	})
+}
+
+func TestBoxShadowTopLeft(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("basic shadow structure", func(t *testing.T) {
+		got := Box().Shadow(ShadowTopLeft).String("hi")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, 4, len(rows))
+		// Row 0: shadow top row.
+		assert.Equal(t, true, strings.Contains(rows[0], "░░░░"))
+		assert.Equal(t, true, strings.HasSuffix(rows[0], " "))
+		// Row 1: shadow vertical + top border.
+		assert.Equal(t, true, strings.HasPrefix(rows[1], "░"))
+		assert.Equal(t, true, strings.Contains(rows[1], "┌──┐"))
+		// Row 2: shadow vertical + content.
+		assert.Equal(t, true, strings.HasPrefix(rows[2], "░"))
+		assert.Equal(t, true, strings.Contains(rows[2], "│hi│"))
+		// Row 3: space + bottom border.
+		assert.Equal(t, true, strings.HasPrefix(rows[3], " "))
+		assert.Equal(t, true, strings.Contains(rows[3], "└──┘"))
+	})
+}
+
+func TestBoxShadowWithColors(t *testing.T) {
+	t.Run("shadow gets its own ANSI codes", func(t *testing.T) {
+		ForceColors(true)
+		got := Box().Red().Shadow(ShadowBottomRight).String("x")
+		rows := strings.Split(got, "\n")
+		// Shadow rows should contain the bright-black code (default shadow color).
+		// The shadow bottom row should have shadow styling.
+		lastRow := rows[len(rows)-1]
+		assert.Equal(t, true, strings.Contains(lastRow, "\x1b[90m"))
+	})
+
+	t.Run("custom shadow style overrides glyphs", func(t *testing.T) {
+		ForceColors(false)
+		got := Box().Shadow(ShadowBottomRight).ShadowSty(ShadowBlock).String("x")
+		rows := strings.Split(got, "\n")
+		// Shadow should use █ instead of ░.
+		assert.Equal(t, true, strings.Contains(rows[1], "█"))
+		assert.Equal(t, true, strings.Contains(rows[len(rows)-1], "█"))
+	})
+}
+
+func TestBoxShadowWithPadding(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("shadow works with padding", func(t *testing.T) {
+		got := Box().Padding(1).Shadow(ShadowBottomRight).String("x")
+		rows := strings.Split(got, "\n")
+		// Box has padding so more rows: top border, top pad, content, bottom pad, bottom border + shadow bottom.
+		assert.Equal(t, 6, len(rows))
+		// Last row is shadow bottom.
+		assert.Equal(t, true, strings.Contains(rows[5], "░"))
+	})
+}
+
+func TestBoxShadowImmutability(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("Shadow does not modify original", func(t *testing.T) {
+		base := Box()
+		shadowed := base.Shadow(ShadowBottomRight)
+
+		baseGot := base.String("x")
+		shadowGot := shadowed.String("x")
+
+		baseRows := strings.Split(baseGot, "\n")
+		shadowRows := strings.Split(shadowGot, "\n")
+
+		// Base has 3 rows, shadow has 4.
+		assert.Equal(t, 3, len(baseRows))
+		assert.Equal(t, 4, len(shadowRows))
+	})
+
+	t.Run("ShadowSty does not modify original shadow", func(t *testing.T) {
+		base := Box().Shadow(ShadowBottomRight)
+		custom := base.ShadowSty(ShadowBlock)
+
+		baseGot := base.String("x")
+		customGot := custom.String("x")
+
+		// Base uses ░, custom uses █.
+		assert.Equal(t, true, strings.Contains(baseGot, "░"))
+		assert.Equal(t, true, strings.Contains(customGot, "█"))
+		assert.Equal(t, false, strings.Contains(baseGot, "█"))
+	})
+}
