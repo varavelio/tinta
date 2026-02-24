@@ -199,25 +199,25 @@ func TestImmutability(t *testing.T) {
 func TestAllBackgrounds(t *testing.T) {
 	cases := []struct {
 		name string
-		fn   func(TextStyle) TextStyle
+		fn   func(*TextStyle) *TextStyle
 		code string
 	}{
-		{"OnBlack", TextStyle.OnBlack, "40"},
-		{"OnRed", TextStyle.OnRed, "41"},
-		{"OnGreen", TextStyle.OnGreen, "42"},
-		{"OnYellow", TextStyle.OnYellow, "43"},
-		{"OnBlue", TextStyle.OnBlue, "44"},
-		{"OnMagenta", TextStyle.OnMagenta, "45"},
-		{"OnCyan", TextStyle.OnCyan, "46"},
-		{"OnWhite", TextStyle.OnWhite, "47"},
-		{"OnBrightBlack", TextStyle.OnBrightBlack, "100"},
-		{"OnBrightRed", TextStyle.OnBrightRed, "101"},
-		{"OnBrightGreen", TextStyle.OnBrightGreen, "102"},
-		{"OnBrightYellow", TextStyle.OnBrightYellow, "103"},
-		{"OnBrightBlue", TextStyle.OnBrightBlue, "104"},
-		{"OnBrightMagenta", TextStyle.OnBrightMagenta, "105"},
-		{"OnBrightCyan", TextStyle.OnBrightCyan, "106"},
-		{"OnBrightWhite", TextStyle.OnBrightWhite, "107"},
+		{"OnBlack", (*TextStyle).OnBlack, "40"},
+		{"OnRed", (*TextStyle).OnRed, "41"},
+		{"OnGreen", (*TextStyle).OnGreen, "42"},
+		{"OnYellow", (*TextStyle).OnYellow, "43"},
+		{"OnBlue", (*TextStyle).OnBlue, "44"},
+		{"OnMagenta", (*TextStyle).OnMagenta, "45"},
+		{"OnCyan", (*TextStyle).OnCyan, "46"},
+		{"OnWhite", (*TextStyle).OnWhite, "47"},
+		{"OnBrightBlack", (*TextStyle).OnBrightBlack, "100"},
+		{"OnBrightRed", (*TextStyle).OnBrightRed, "101"},
+		{"OnBrightGreen", (*TextStyle).OnBrightGreen, "102"},
+		{"OnBrightYellow", (*TextStyle).OnBrightYellow, "103"},
+		{"OnBrightBlue", (*TextStyle).OnBrightBlue, "104"},
+		{"OnBrightMagenta", (*TextStyle).OnBrightMagenta, "105"},
+		{"OnBrightCyan", (*TextStyle).OnBrightCyan, "106"},
+		{"OnBrightWhite", (*TextStyle).OnBrightWhite, "107"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -233,25 +233,25 @@ func TestAllBackgrounds(t *testing.T) {
 func TestAllForegrounds(t *testing.T) {
 	cases := []struct {
 		name string
-		fn   func(TextStyle) TextStyle
+		fn   func(*TextStyle) *TextStyle
 		code string
 	}{
-		{"Black", TextStyle.Black, "30"},
-		{"Red", TextStyle.Red, "31"},
-		{"Green", TextStyle.Green, "32"},
-		{"Yellow", TextStyle.Yellow, "33"},
-		{"Blue", TextStyle.Blue, "34"},
-		{"Magenta", TextStyle.Magenta, "35"},
-		{"Cyan", TextStyle.Cyan, "36"},
-		{"White", TextStyle.White, "37"},
-		{"BrightBlack", TextStyle.BrightBlack, "90"},
-		{"BrightRed", TextStyle.BrightRed, "91"},
-		{"BrightGreen", TextStyle.BrightGreen, "92"},
-		{"BrightYellow", TextStyle.BrightYellow, "93"},
-		{"BrightBlue", TextStyle.BrightBlue, "94"},
-		{"BrightMagenta", TextStyle.BrightMagenta, "95"},
-		{"BrightCyan", TextStyle.BrightCyan, "96"},
-		{"BrightWhite", TextStyle.BrightWhite, "97"},
+		{"Black", (*TextStyle).Black, "30"},
+		{"Red", (*TextStyle).Red, "31"},
+		{"Green", (*TextStyle).Green, "32"},
+		{"Yellow", (*TextStyle).Yellow, "33"},
+		{"Blue", (*TextStyle).Blue, "34"},
+		{"Magenta", (*TextStyle).Magenta, "35"},
+		{"Cyan", (*TextStyle).Cyan, "36"},
+		{"White", (*TextStyle).White, "37"},
+		{"BrightBlack", (*TextStyle).BrightBlack, "90"},
+		{"BrightRed", (*TextStyle).BrightRed, "91"},
+		{"BrightGreen", (*TextStyle).BrightGreen, "92"},
+		{"BrightYellow", (*TextStyle).BrightYellow, "93"},
+		{"BrightBlue", (*TextStyle).BrightBlue, "94"},
+		{"BrightMagenta", (*TextStyle).BrightMagenta, "95"},
+		{"BrightCyan", (*TextStyle).BrightCyan, "96"},
+		{"BrightWhite", (*TextStyle).BrightWhite, "97"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

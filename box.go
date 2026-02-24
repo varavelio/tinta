@@ -64,9 +64,11 @@ const (
 	ShadowTopLeft
 )
 
-// box is intentionally unexported. Users interact with it through the
-// exported BoxStyle type alias and the [Box] constructor.
-type box struct {
+// BoxStyle holds the configuration for a bordered terminal container.
+// Create one with [Box] and chain border, padding, margin, alignment,
+// shadow, and color methods. All fields are unexported to preserve
+// immutability; use the provided methods to configure the box.
+type BoxStyle struct {
 	border       Border
 	codes        []string // ANSI SGR codes for the border/background
 	padTop       int
@@ -91,18 +93,14 @@ type box struct {
 	shadowCodes  []string         // ANSI SGR codes for the shadow glyphs
 }
 
-// BoxStyle is the public handle returned by [Box] and every chaining method.
-// The underlying struct is opaque; users cannot create one manually.
-type BoxStyle = *box
-
-// Box returns a new BoxStyle with a simple border and no padding or margin.
-func Box() BoxStyle {
-	return &box{border: BorderSimple}
+// Box returns a new [BoxStyle] with a simple border and no padding or margin.
+func Box() *BoxStyle {
+	return &BoxStyle{border: BorderSimple}
 }
 
-// copyBox returns a deep copy of the box, including the codes slice,
+// copyBox returns a deep copy of the BoxStyle, including the codes slice,
 // centerLines map, and shadow configuration.
-func copyBox(b *box) *box {
+func copyBox(b *BoxStyle) *BoxStyle {
 	cp := *b
 	if len(b.codes) > 0 {
 		cp.codes = make([]string, len(b.codes))
@@ -125,8 +123,8 @@ func copyBox(b *box) *box {
 	return &cp
 }
 
-// withCode returns a new box with an additional ANSI code appended.
-func (b *box) withCode(code string) BoxStyle {
+// withCode returns a new BoxStyle with an additional ANSI code appended.
+func (b *BoxStyle) withCode(code string) *BoxStyle {
 	cp := copyBox(b)
 	cp.codes = append(cp.codes, code)
 	return cp
@@ -135,35 +133,35 @@ func (b *box) withCode(code string) BoxStyle {
 // --- Border style setters ---
 
 // Border sets a custom border using the provided [Border] struct.
-func (b *box) Border(border Border) BoxStyle {
+func (b *BoxStyle) Border(border Border) *BoxStyle {
 	cp := copyBox(b)
 	cp.border = border
 	return cp
 }
 
 // BorderSimple sets the border to a simple line style (┌─┐).
-func (b *box) BorderSimple() BoxStyle {
+func (b *BoxStyle) BorderSimple() *BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderSimple
 	return cp
 }
 
 // BorderRounded sets the border to a rounded style (╭─╮).
-func (b *box) BorderRounded() BoxStyle {
+func (b *BoxStyle) BorderRounded() *BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderRounded
 	return cp
 }
 
 // BorderDouble sets the border to a double line style (╔═╗).
-func (b *box) BorderDouble() BoxStyle {
+func (b *BoxStyle) BorderDouble() *BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderDouble
 	return cp
 }
 
 // BorderHeavy sets the border to a heavy line style (┏━┓).
-func (b *box) BorderHeavy() BoxStyle {
+func (b *BoxStyle) BorderHeavy() *BoxStyle {
 	cp := copyBox(b)
 	cp.border = BorderHeavy
 	return cp
@@ -172,7 +170,7 @@ func (b *box) BorderHeavy() BoxStyle {
 // --- Layout: Padding ---
 
 // Padding sets equal padding on all four sides.
-func (b *box) Padding(n int) BoxStyle {
+func (b *BoxStyle) Padding(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padTop = n
 	cp.padRight = n
@@ -182,35 +180,35 @@ func (b *box) Padding(n int) BoxStyle {
 }
 
 // PaddingTop sets the top padding.
-func (b *box) PaddingTop(n int) BoxStyle {
+func (b *BoxStyle) PaddingTop(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padTop = n
 	return cp
 }
 
 // PaddingBottom sets the bottom padding.
-func (b *box) PaddingBottom(n int) BoxStyle {
+func (b *BoxStyle) PaddingBottom(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padBottom = n
 	return cp
 }
 
 // PaddingLeft sets the left padding.
-func (b *box) PaddingLeft(n int) BoxStyle {
+func (b *BoxStyle) PaddingLeft(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padLeft = n
 	return cp
 }
 
 // PaddingRight sets the right padding.
-func (b *box) PaddingRight(n int) BoxStyle {
+func (b *BoxStyle) PaddingRight(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padRight = n
 	return cp
 }
 
 // PaddingX sets the left and right padding.
-func (b *box) PaddingX(n int) BoxStyle {
+func (b *BoxStyle) PaddingX(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padLeft = n
 	cp.padRight = n
@@ -218,7 +216,7 @@ func (b *box) PaddingX(n int) BoxStyle {
 }
 
 // PaddingY sets the top and bottom padding.
-func (b *box) PaddingY(n int) BoxStyle {
+func (b *BoxStyle) PaddingY(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.padTop = n
 	cp.padBottom = n
@@ -228,7 +226,7 @@ func (b *box) PaddingY(n int) BoxStyle {
 // --- Layout: Margin ---
 
 // Margin sets equal margin on all four sides.
-func (b *box) Margin(n int) BoxStyle {
+func (b *BoxStyle) Margin(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginTop = n
 	cp.marginRight = n
@@ -238,35 +236,35 @@ func (b *box) Margin(n int) BoxStyle {
 }
 
 // MarginTop sets the top margin.
-func (b *box) MarginTop(n int) BoxStyle {
+func (b *BoxStyle) MarginTop(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginTop = n
 	return cp
 }
 
 // MarginBottom sets the bottom margin.
-func (b *box) MarginBottom(n int) BoxStyle {
+func (b *BoxStyle) MarginBottom(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginBottom = n
 	return cp
 }
 
 // MarginLeft sets the left margin.
-func (b *box) MarginLeft(n int) BoxStyle {
+func (b *BoxStyle) MarginLeft(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginLeft = n
 	return cp
 }
 
 // MarginRight sets the right margin.
-func (b *box) MarginRight(n int) BoxStyle {
+func (b *BoxStyle) MarginRight(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginRight = n
 	return cp
 }
 
 // MarginX sets the left and right margin.
-func (b *box) MarginX(n int) BoxStyle {
+func (b *BoxStyle) MarginX(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginLeft = n
 	cp.marginRight = n
@@ -274,7 +272,7 @@ func (b *box) MarginX(n int) BoxStyle {
 }
 
 // MarginY sets the top and bottom margin.
-func (b *box) MarginY(n int) BoxStyle {
+func (b *BoxStyle) MarginY(n int) *BoxStyle {
 	cp := copyBox(b)
 	cp.marginTop = n
 	cp.marginBottom = n
@@ -285,7 +283,7 @@ func (b *box) MarginY(n int) BoxStyle {
 
 // Center enables horizontal centering of content lines within the box.
 // Shorter lines are padded equally on both sides to match the widest line.
-func (b *box) Center() BoxStyle {
+func (b *BoxStyle) Center() *BoxStyle {
 	cp := copyBox(b)
 	cp.center = true
 	return cp
@@ -294,7 +292,7 @@ func (b *box) Center() BoxStyle {
 // CenterTrim enables horizontal centering and trims leading/trailing
 // whitespace from each line before centering. This is useful when content
 // has inconsistent indentation that should be ignored.
-func (b *box) CenterTrim() BoxStyle {
+func (b *BoxStyle) CenterTrim() *BoxStyle {
 	cp := copyBox(b)
 	cp.center = true
 	cp.centerTrim = true
@@ -304,7 +302,7 @@ func (b *box) CenterTrim() BoxStyle {
 // CenterLine marks the line at index n (0-based) for horizontal centering.
 // If n is out of bounds at render time, the call is silently ignored.
 // This can be called multiple times to center several specific lines.
-func (b *box) CenterLine(n int) BoxStyle {
+func (b *BoxStyle) CenterLine(n int) *BoxStyle {
 	cp := copyBox(b)
 	if cp.centerLines == nil {
 		cp.centerLines = make(map[int]struct{})
@@ -315,7 +313,7 @@ func (b *box) CenterLine(n int) BoxStyle {
 
 // CenterFirstLine centers the first content line (index 0).
 // This is a convenience shortcut useful for centering titles.
-func (b *box) CenterFirstLine() BoxStyle {
+func (b *BoxStyle) CenterFirstLine() *BoxStyle {
 	cp := copyBox(b)
 	cp.centerFirst = true
 	return cp
@@ -323,7 +321,7 @@ func (b *box) CenterFirstLine() BoxStyle {
 
 // CenterLastLine centers the last content line.
 // The line count is determined at render time.
-func (b *box) CenterLastLine() BoxStyle {
+func (b *BoxStyle) CenterLastLine() *BoxStyle {
 	cp := copyBox(b)
 	cp.centerLast = true
 	return cp
@@ -333,14 +331,14 @@ func (b *box) CenterLastLine() BoxStyle {
 
 // DisableTop hides the top border row. The vertical borders on content
 // rows remain unchanged.
-func (b *box) DisableTop() BoxStyle {
+func (b *BoxStyle) DisableTop() *BoxStyle {
 	cp := copyBox(b)
 	cp.hideTop = true
 	return cp
 }
 
 // DisableBottom hides the bottom border row.
-func (b *box) DisableBottom() BoxStyle {
+func (b *BoxStyle) DisableBottom() *BoxStyle {
 	cp := copyBox(b)
 	cp.hideBottom = true
 	return cp
@@ -348,14 +346,14 @@ func (b *box) DisableBottom() BoxStyle {
 
 // DisableLeft hides the left vertical border on all rows (top corner,
 // content, padding, and bottom corner).
-func (b *box) DisableLeft() BoxStyle {
+func (b *BoxStyle) DisableLeft() *BoxStyle {
 	cp := copyBox(b)
 	cp.hideLeft = true
 	return cp
 }
 
 // DisableRight hides the right vertical border on all rows.
-func (b *box) DisableRight() BoxStyle {
+func (b *BoxStyle) DisableRight() *BoxStyle {
 	cp := copyBox(b)
 	cp.hideRight = true
 	return cp
@@ -365,9 +363,9 @@ func (b *box) DisableRight() BoxStyle {
 
 // Shadow enables a shadow effect in the given direction using the
 // provided [ShadowStyle]. Shadow glyphs are rendered with bright-black
-// color by default; use [ShadowDim], [ShadowBlack], or
-// [ShadowBrightBlack] to change the color.
-func (b *box) Shadow(pos ShadowPosition, sty ShadowStyle) BoxStyle {
+// color by default; use [BoxStyle.ShadowDim], [BoxStyle.ShadowBlack], or
+// [BoxStyle.ShadowBrightBlack] to change the color.
+func (b *BoxStyle) Shadow(pos ShadowPosition, sty ShadowStyle) *BoxStyle {
 	cp := copyBox(b)
 	cp.shadow = &sty
 	cp.shadowPos = pos
@@ -378,21 +376,21 @@ func (b *box) Shadow(pos ShadowPosition, sty ShadowStyle) BoxStyle {
 }
 
 // ShadowDim applies the dim modifier to the shadow.
-func (b *box) ShadowDim() BoxStyle {
+func (b *BoxStyle) ShadowDim() *BoxStyle {
 	cp := copyBox(b)
 	cp.shadowCodes = append(cp.shadowCodes, cDim)
 	return cp
 }
 
 // ShadowBlack sets the shadow foreground to black.
-func (b *box) ShadowBlack() BoxStyle {
+func (b *BoxStyle) ShadowBlack() *BoxStyle {
 	cp := copyBox(b)
 	cp.shadowCodes = append(cp.shadowCodes, cBlack)
 	return cp
 }
 
 // ShadowBrightBlack sets the shadow foreground to bright black.
-func (b *box) ShadowBrightBlack() BoxStyle {
+func (b *BoxStyle) ShadowBrightBlack() *BoxStyle {
 	cp := copyBox(b)
 	cp.shadowCodes = append(cp.shadowCodes, cBrightBlack)
 	return cp
@@ -400,88 +398,88 @@ func (b *box) ShadowBrightBlack() BoxStyle {
 
 // --- Colors (border + background) ---
 
-func (b *box) OnBlack() BoxStyle   { return b.withCode(cOnBlack) }
-func (b *box) OnRed() BoxStyle     { return b.withCode(cOnRed) }
-func (b *box) OnGreen() BoxStyle   { return b.withCode(cOnGreen) }
-func (b *box) OnYellow() BoxStyle  { return b.withCode(cOnYellow) }
-func (b *box) OnBlue() BoxStyle    { return b.withCode(cOnBlue) }
-func (b *box) OnMagenta() BoxStyle { return b.withCode(cOnMagenta) }
-func (b *box) OnCyan() BoxStyle    { return b.withCode(cOnCyan) }
-func (b *box) OnWhite() BoxStyle   { return b.withCode(cOnWhite) }
+func (b *BoxStyle) OnBlack() *BoxStyle   { return b.withCode(cOnBlack) }
+func (b *BoxStyle) OnRed() *BoxStyle     { return b.withCode(cOnRed) }
+func (b *BoxStyle) OnGreen() *BoxStyle   { return b.withCode(cOnGreen) }
+func (b *BoxStyle) OnYellow() *BoxStyle  { return b.withCode(cOnYellow) }
+func (b *BoxStyle) OnBlue() *BoxStyle    { return b.withCode(cOnBlue) }
+func (b *BoxStyle) OnMagenta() *BoxStyle { return b.withCode(cOnMagenta) }
+func (b *BoxStyle) OnCyan() *BoxStyle    { return b.withCode(cOnCyan) }
+func (b *BoxStyle) OnWhite() *BoxStyle   { return b.withCode(cOnWhite) }
 
-func (b *box) OnBrightBlack() BoxStyle   { return b.withCode(cOnBrightBlack) }
-func (b *box) OnBrightRed() BoxStyle     { return b.withCode(cOnBrightRed) }
-func (b *box) OnBrightGreen() BoxStyle   { return b.withCode(cOnBrightGreen) }
-func (b *box) OnBrightYellow() BoxStyle  { return b.withCode(cOnBrightYellow) }
-func (b *box) OnBrightBlue() BoxStyle    { return b.withCode(cOnBrightBlue) }
-func (b *box) OnBrightMagenta() BoxStyle { return b.withCode(cOnBrightMagenta) }
-func (b *box) OnBrightCyan() BoxStyle    { return b.withCode(cOnBrightCyan) }
-func (b *box) OnBrightWhite() BoxStyle   { return b.withCode(cOnBrightWhite) }
+func (b *BoxStyle) OnBrightBlack() *BoxStyle   { return b.withCode(cOnBrightBlack) }
+func (b *BoxStyle) OnBrightRed() *BoxStyle     { return b.withCode(cOnBrightRed) }
+func (b *BoxStyle) OnBrightGreen() *BoxStyle   { return b.withCode(cOnBrightGreen) }
+func (b *BoxStyle) OnBrightYellow() *BoxStyle  { return b.withCode(cOnBrightYellow) }
+func (b *BoxStyle) OnBrightBlue() *BoxStyle    { return b.withCode(cOnBrightBlue) }
+func (b *BoxStyle) OnBrightMagenta() *BoxStyle { return b.withCode(cOnBrightMagenta) }
+func (b *BoxStyle) OnBrightCyan() *BoxStyle    { return b.withCode(cOnBrightCyan) }
+func (b *BoxStyle) OnBrightWhite() *BoxStyle   { return b.withCode(cOnBrightWhite) }
 
 // Foreground colors for the border glyphs.
 
-func (b *box) Black() BoxStyle   { return b.withCode(cBlack) }
-func (b *box) Red() BoxStyle     { return b.withCode(cRed) }
-func (b *box) Green() BoxStyle   { return b.withCode(cGreen) }
-func (b *box) Yellow() BoxStyle  { return b.withCode(cYellow) }
-func (b *box) Blue() BoxStyle    { return b.withCode(cBlue) }
-func (b *box) Magenta() BoxStyle { return b.withCode(cMagenta) }
-func (b *box) Cyan() BoxStyle    { return b.withCode(cCyan) }
-func (b *box) White() BoxStyle   { return b.withCode(cWhite) }
+func (b *BoxStyle) Black() *BoxStyle   { return b.withCode(cBlack) }
+func (b *BoxStyle) Red() *BoxStyle     { return b.withCode(cRed) }
+func (b *BoxStyle) Green() *BoxStyle   { return b.withCode(cGreen) }
+func (b *BoxStyle) Yellow() *BoxStyle  { return b.withCode(cYellow) }
+func (b *BoxStyle) Blue() *BoxStyle    { return b.withCode(cBlue) }
+func (b *BoxStyle) Magenta() *BoxStyle { return b.withCode(cMagenta) }
+func (b *BoxStyle) Cyan() *BoxStyle    { return b.withCode(cCyan) }
+func (b *BoxStyle) White() *BoxStyle   { return b.withCode(cWhite) }
 
-func (b *box) BrightBlack() BoxStyle   { return b.withCode(cBrightBlack) }
-func (b *box) BrightRed() BoxStyle     { return b.withCode(cBrightRed) }
-func (b *box) BrightGreen() BoxStyle   { return b.withCode(cBrightGreen) }
-func (b *box) BrightYellow() BoxStyle  { return b.withCode(cBrightYellow) }
-func (b *box) BrightBlue() BoxStyle    { return b.withCode(cBrightBlue) }
-func (b *box) BrightMagenta() BoxStyle { return b.withCode(cBrightMagenta) }
-func (b *box) BrightCyan() BoxStyle    { return b.withCode(cBrightCyan) }
-func (b *box) BrightWhite() BoxStyle   { return b.withCode(cBrightWhite) }
+func (b *BoxStyle) BrightBlack() *BoxStyle   { return b.withCode(cBrightBlack) }
+func (b *BoxStyle) BrightRed() *BoxStyle     { return b.withCode(cBrightRed) }
+func (b *BoxStyle) BrightGreen() *BoxStyle   { return b.withCode(cBrightGreen) }
+func (b *BoxStyle) BrightYellow() *BoxStyle  { return b.withCode(cBrightYellow) }
+func (b *BoxStyle) BrightBlue() *BoxStyle    { return b.withCode(cBrightBlue) }
+func (b *BoxStyle) BrightMagenta() *BoxStyle { return b.withCode(cBrightMagenta) }
+func (b *BoxStyle) BrightCyan() *BoxStyle    { return b.withCode(cBrightCyan) }
+func (b *BoxStyle) BrightWhite() *BoxStyle   { return b.withCode(cBrightWhite) }
 
 // Modifiers for the border style.
 
-func (b *box) Bold() BoxStyle { return b.withCode(cBold) }
-func (b *box) Dim() BoxStyle  { return b.withCode(cDim) }
+func (b *BoxStyle) Bold() *BoxStyle { return b.withCode(cBold) }
+func (b *BoxStyle) Dim() *BoxStyle  { return b.withCode(cDim) }
 
 // --- Output methods ---
 
 // String renders the box around the given content and returns the result.
-func (b *box) String(content string) string {
+func (b *BoxStyle) String(content string) string {
 	return b.render(content)
 }
 
 // Sprintf formats the content, renders it inside the box, and returns the result.
-func (b *box) Sprintf(format string, a ...any) string {
+func (b *BoxStyle) Sprintf(format string, a ...any) string {
 	return b.render(fmt.Sprintf(format, a...))
 }
 
 // Print renders the box and writes it to the default output.
-func (b *box) Print(content string) {
+func (b *BoxStyle) Print(content string) {
 	_, _ = fmt.Fprint(getOutput(), b.render(content))
 }
 
 // Printf formats the content, renders it inside the box, and writes to the default output.
-func (b *box) Printf(format string, a ...any) {
+func (b *BoxStyle) Printf(format string, a ...any) {
 	_, _ = fmt.Fprint(getOutput(), b.render(fmt.Sprintf(format, a...)))
 }
 
 // Println renders the box and writes it followed by a newline to the default output.
-func (b *box) Println(content string) {
+func (b *BoxStyle) Println(content string) {
 	_, _ = fmt.Fprintln(getOutput(), b.render(content))
 }
 
 // Fprint renders the box and writes it to w.
-func (b *box) Fprint(w io.Writer, content string) (int, error) {
+func (b *BoxStyle) Fprint(w io.Writer, content string) (int, error) {
 	return fmt.Fprint(w, b.render(content))
 }
 
 // Fprintf formats the content, renders it inside the box, and writes to w.
-func (b *box) Fprintf(w io.Writer, format string, a ...any) (int, error) {
+func (b *BoxStyle) Fprintf(w io.Writer, format string, a ...any) (int, error) {
 	return fmt.Fprint(w, b.render(fmt.Sprintf(format, a...)))
 }
 
 // Fprintln renders the box and writes it followed by a newline to w.
-func (b *box) Fprintln(w io.Writer, content string) (int, error) {
+func (b *BoxStyle) Fprintln(w io.Writer, content string) (int, error) {
 	return fmt.Fprintln(w, b.render(content))
 }
 
@@ -520,17 +518,17 @@ func wrapCodes(s string, codes []string) string {
 }
 
 // wrapStyle wraps s in the box's border/background ANSI codes.
-func (b *box) wrapStyle(s string) string {
+func (b *BoxStyle) wrapStyle(s string) string {
 	return wrapCodes(s, b.codes)
 }
 
 // wrapShadow wraps s in the box's shadow ANSI codes.
-func (b *box) wrapShadow(s string) string {
+func (b *BoxStyle) wrapShadow(s string) string {
 	return wrapCodes(s, b.shadowCodes)
 }
 
 // render builds the full box frame around content.
-func (b *box) render(content string) string {
+func (b *BoxStyle) render(content string) string {
 	lines := strings.Split(content, "\n")
 
 	// Apply trim if CenterTrim is active.
@@ -711,7 +709,7 @@ func (b *box) render(content string) string {
 //	│ hi │╮   ← TopRight corner
 //	└────┘│   ← Vertical
 //	 ╰────╯   ← BottomLeft, Horizontals, BottomRight
-func (b *box) applyShadow(rows []string, boxVisW int) []string {
+func (b *BoxStyle) applyShadow(rows []string, boxVisW int) []string {
 	s := b.shadow
 	n := len(rows)
 	if n == 0 {

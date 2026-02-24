@@ -376,25 +376,25 @@ func TestBoxConcurrent(t *testing.T) {
 func TestBoxAllBorderColors(t *testing.T) {
 	fgCases := []struct {
 		name string
-		fn   func(BoxStyle) BoxStyle
+		fn   func(*BoxStyle) *BoxStyle
 		code string
 	}{
-		{"Black", BoxStyle.Black, "30"},
-		{"Red", BoxStyle.Red, "31"},
-		{"Green", BoxStyle.Green, "32"},
-		{"Yellow", BoxStyle.Yellow, "33"},
-		{"Blue", BoxStyle.Blue, "34"},
-		{"Magenta", BoxStyle.Magenta, "35"},
-		{"Cyan", BoxStyle.Cyan, "36"},
-		{"White", BoxStyle.White, "37"},
-		{"BrightBlack", BoxStyle.BrightBlack, "90"},
-		{"BrightRed", BoxStyle.BrightRed, "91"},
-		{"BrightGreen", BoxStyle.BrightGreen, "92"},
-		{"BrightYellow", BoxStyle.BrightYellow, "93"},
-		{"BrightBlue", BoxStyle.BrightBlue, "94"},
-		{"BrightMagenta", BoxStyle.BrightMagenta, "95"},
-		{"BrightCyan", BoxStyle.BrightCyan, "96"},
-		{"BrightWhite", BoxStyle.BrightWhite, "97"},
+		{"Black", (*BoxStyle).Black, "30"},
+		{"Red", (*BoxStyle).Red, "31"},
+		{"Green", (*BoxStyle).Green, "32"},
+		{"Yellow", (*BoxStyle).Yellow, "33"},
+		{"Blue", (*BoxStyle).Blue, "34"},
+		{"Magenta", (*BoxStyle).Magenta, "35"},
+		{"Cyan", (*BoxStyle).Cyan, "36"},
+		{"White", (*BoxStyle).White, "37"},
+		{"BrightBlack", (*BoxStyle).BrightBlack, "90"},
+		{"BrightRed", (*BoxStyle).BrightRed, "91"},
+		{"BrightGreen", (*BoxStyle).BrightGreen, "92"},
+		{"BrightYellow", (*BoxStyle).BrightYellow, "93"},
+		{"BrightBlue", (*BoxStyle).BrightBlue, "94"},
+		{"BrightMagenta", (*BoxStyle).BrightMagenta, "95"},
+		{"BrightCyan", (*BoxStyle).BrightCyan, "96"},
+		{"BrightWhite", (*BoxStyle).BrightWhite, "97"},
 	}
 	for _, tc := range fgCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -407,25 +407,25 @@ func TestBoxAllBorderColors(t *testing.T) {
 func TestBoxAllBackgrounds(t *testing.T) {
 	bgCases := []struct {
 		name string
-		fn   func(BoxStyle) BoxStyle
+		fn   func(*BoxStyle) *BoxStyle
 		code string
 	}{
-		{"OnBlack", BoxStyle.OnBlack, "40"},
-		{"OnRed", BoxStyle.OnRed, "41"},
-		{"OnGreen", BoxStyle.OnGreen, "42"},
-		{"OnYellow", BoxStyle.OnYellow, "43"},
-		{"OnBlue", BoxStyle.OnBlue, "44"},
-		{"OnMagenta", BoxStyle.OnMagenta, "45"},
-		{"OnCyan", BoxStyle.OnCyan, "46"},
-		{"OnWhite", BoxStyle.OnWhite, "47"},
-		{"OnBrightBlack", BoxStyle.OnBrightBlack, "100"},
-		{"OnBrightRed", BoxStyle.OnBrightRed, "101"},
-		{"OnBrightGreen", BoxStyle.OnBrightGreen, "102"},
-		{"OnBrightYellow", BoxStyle.OnBrightYellow, "103"},
-		{"OnBrightBlue", BoxStyle.OnBrightBlue, "104"},
-		{"OnBrightMagenta", BoxStyle.OnBrightMagenta, "105"},
-		{"OnBrightCyan", BoxStyle.OnBrightCyan, "106"},
-		{"OnBrightWhite", BoxStyle.OnBrightWhite, "107"},
+		{"OnBlack", (*BoxStyle).OnBlack, "40"},
+		{"OnRed", (*BoxStyle).OnRed, "41"},
+		{"OnGreen", (*BoxStyle).OnGreen, "42"},
+		{"OnYellow", (*BoxStyle).OnYellow, "43"},
+		{"OnBlue", (*BoxStyle).OnBlue, "44"},
+		{"OnMagenta", (*BoxStyle).OnMagenta, "45"},
+		{"OnCyan", (*BoxStyle).OnCyan, "46"},
+		{"OnWhite", (*BoxStyle).OnWhite, "47"},
+		{"OnBrightBlack", (*BoxStyle).OnBrightBlack, "100"},
+		{"OnBrightRed", (*BoxStyle).OnBrightRed, "101"},
+		{"OnBrightGreen", (*BoxStyle).OnBrightGreen, "102"},
+		{"OnBrightYellow", (*BoxStyle).OnBrightYellow, "103"},
+		{"OnBrightBlue", (*BoxStyle).OnBrightBlue, "104"},
+		{"OnBrightMagenta", (*BoxStyle).OnBrightMagenta, "105"},
+		{"OnBrightCyan", (*BoxStyle).OnBrightCyan, "106"},
+		{"OnBrightWhite", (*BoxStyle).OnBrightWhite, "107"},
 	}
 	for _, tc := range bgCases {
 		t.Run(tc.name, func(t *testing.T) {
