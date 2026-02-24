@@ -1098,32 +1098,28 @@ func TestBoxShadowBottomRight(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure", func(t *testing.T) {
-		got := Box().Shadow(ShadowBottomRight).String("hi")
+	t.Run("basic shadow structure with corners", func(t *testing.T) {
+		got := Box().Shadow(ShadowBottomRight, ShadowLight).String("hi")
 		rows := strings.Split(got, "\n")
-		// Expected:
-		// ┌──┐      (row 0, + space for shadow column)
-		// │hi│░     (row 1, shadow vertical)
-		// └──┘░     (row 2, shadow vertical)
-		//  ░░░░░    (row 3, shadow bottom row)
+		// Expected (ShadowLight uses ░ for every glyph):
+		// ┌──┐      (row 0: box + spacer)
+		// │hi│░     (row 1: box + TopRight corner)
+		// └──┘░     (row 2: box + Vertical)
+		//  ░░░░     (row 3: spacer + BottomLeft + ░░ + BottomRight)
 		assert.Equal(t, 4, len(rows))
 		// Row 0: top border + space.
-		assert.Equal(t, true, strings.HasPrefix(rows[0], "┌──┐"))
-		assert.Equal(t, true, strings.HasSuffix(rows[0], " "))
-		// Row 1: content + shadow vertical.
-		assert.Equal(t, true, strings.Contains(rows[1], "│hi│"))
-		assert.Equal(t, true, strings.HasSuffix(rows[1], "░"))
-		// Row 2: bottom border + shadow vertical.
-		assert.Equal(t, true, strings.Contains(rows[2], "└──┘"))
-		assert.Equal(t, true, strings.HasSuffix(rows[2], "░"))
-		// Row 3: space + horizontals.
-		assert.Equal(t, true, strings.HasPrefix(rows[3], " "))
-		assert.Equal(t, true, strings.Contains(rows[3], "░░░░"))
+		assert.Equal(t, "┌──┐ ", rows[0])
+		// Row 1: content + TopRight corner (░).
+		assert.Equal(t, "│hi│░", rows[1])
+		// Row 2: bottom border + vertical (░).
+		assert.Equal(t, "└──┘░", rows[2])
+		// Row 3: space + shadow bar (░░░░).
+		assert.Equal(t, " ░░░░", rows[3])
 	})
 
 	t.Run("shadow adds one extra row and one extra column", func(t *testing.T) {
 		noShadow := Box().String("test")
-		withShadow := Box().Shadow(ShadowBottomRight).String("test")
+		withShadow := Box().Shadow(ShadowBottomRight, ShadowLight).String("test")
 
 		noRows := strings.Split(noShadow, "\n")
 		shadowRows := strings.Split(withShadow, "\n")
@@ -1138,27 +1134,41 @@ func TestBoxShadowBottomRight(t *testing.T) {
 			assert.Equal(t, noW+1, shW)
 		}
 	})
+
+	t.Run("custom style renders distinct corners", func(t *testing.T) {
+		sty := ShadowStyle{
+			TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
+			Horizontal: "─", Vertical: "│",
+		}
+		got := Box().Shadow(ShadowBottomRight, sty).String("hi")
+		rows := strings.Split(got, "\n")
+		// Row 0: box + space.
+		assert.Equal(t, "┌──┐ ", rows[0])
+		// Row 1: box + TopRight corner (╮).
+		assert.Equal(t, "│hi│╮", rows[1])
+		// Row 2: box + Vertical (│).
+		assert.Equal(t, "└──┘│", rows[2])
+		// Row 3: space + BottomLeft + ── + BottomRight = ╰──╯
+		assert.Equal(t, " ╰──╯", rows[3])
+	})
 }
 
 func TestBoxShadowBottomLeft(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure", func(t *testing.T) {
-		got := Box().Shadow(ShadowBottomLeft).String("hi")
+	t.Run("basic shadow structure with corners", func(t *testing.T) {
+		got := Box().Shadow(ShadowBottomLeft, ShadowLight).String("hi")
 		rows := strings.Split(got, "\n")
 		assert.Equal(t, 4, len(rows))
 		// Row 0: space + top border.
-		assert.Equal(t, true, strings.HasPrefix(rows[0], " "))
-		assert.Equal(t, true, strings.Contains(rows[0], "┌──┐"))
-		// Row 1: shadow vertical + content.
-		assert.Equal(t, true, strings.HasPrefix(rows[1], "░"))
-		assert.Equal(t, true, strings.Contains(rows[1], "│hi│"))
-		// Row 2: shadow vertical + bottom border.
-		assert.Equal(t, true, strings.HasPrefix(rows[2], "░"))
-		// Row 3: shadow bottom row + space.
-		assert.Equal(t, true, strings.HasSuffix(rows[3], " "))
-		assert.Equal(t, true, strings.Contains(rows[3], "░░░░"))
+		assert.Equal(t, " ┌──┐", rows[0])
+		// Row 1: TopLeft corner (░) + content.
+		assert.Equal(t, "░│hi│", rows[1])
+		// Row 2: vertical (░) + bottom border.
+		assert.Equal(t, "░└──┘", rows[2])
+		// Row 3: shadow bar + space.
+		assert.Equal(t, "░░░░ ", rows[3])
 	})
 }
 
@@ -1166,22 +1176,18 @@ func TestBoxShadowTopRight(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure", func(t *testing.T) {
-		got := Box().Shadow(ShadowTopRight).String("hi")
+	t.Run("basic shadow structure with corners", func(t *testing.T) {
+		got := Box().Shadow(ShadowTopRight, ShadowLight).String("hi")
 		rows := strings.Split(got, "\n")
 		assert.Equal(t, 4, len(rows))
-		// Row 0: shadow top row.
-		assert.Equal(t, true, strings.HasPrefix(rows[0], " "))
-		assert.Equal(t, true, strings.Contains(rows[0], "░░░░"))
-		// Row 1: top border + shadow vertical.
-		assert.Equal(t, true, strings.Contains(rows[1], "┌──┐"))
-		assert.Equal(t, true, strings.HasSuffix(rows[1], "░"))
-		// Row 2: content + shadow vertical.
-		assert.Equal(t, true, strings.Contains(rows[2], "│hi│"))
-		assert.Equal(t, true, strings.HasSuffix(rows[2], "░"))
-		// Row 3: bottom border + space.
-		assert.Equal(t, true, strings.Contains(rows[3], "└──┘"))
-		assert.Equal(t, true, strings.HasSuffix(rows[3], " "))
+		// Row 0: space + shadow top bar (TopLeft + ░░ + TopRight = ░░░░).
+		assert.Equal(t, " ░░░░", rows[0])
+		// Row 1: top border + Vertical.
+		assert.Equal(t, "┌──┐░", rows[1])
+		// Row 2: content + Vertical.
+		assert.Equal(t, "│hi│░", rows[2])
+		// Row 3: bottom border + BottomRight corner.
+		assert.Equal(t, "└──┘░", rows[3])
 	})
 }
 
@@ -1189,29 +1195,25 @@ func TestBoxShadowTopLeft(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure", func(t *testing.T) {
-		got := Box().Shadow(ShadowTopLeft).String("hi")
+	t.Run("basic shadow structure with corners", func(t *testing.T) {
+		got := Box().Shadow(ShadowTopLeft, ShadowLight).String("hi")
 		rows := strings.Split(got, "\n")
 		assert.Equal(t, 4, len(rows))
-		// Row 0: shadow top row.
-		assert.Equal(t, true, strings.Contains(rows[0], "░░░░"))
-		assert.Equal(t, true, strings.HasSuffix(rows[0], " "))
-		// Row 1: shadow vertical + top border.
-		assert.Equal(t, true, strings.HasPrefix(rows[1], "░"))
-		assert.Equal(t, true, strings.Contains(rows[1], "┌──┐"))
-		// Row 2: shadow vertical + content.
-		assert.Equal(t, true, strings.HasPrefix(rows[2], "░"))
-		assert.Equal(t, true, strings.Contains(rows[2], "│hi│"))
-		// Row 3: space + bottom border.
-		assert.Equal(t, true, strings.HasPrefix(rows[3], " "))
-		assert.Equal(t, true, strings.Contains(rows[3], "└──┘"))
+		// Row 0: shadow bar + space.
+		assert.Equal(t, "░░░░ ", rows[0])
+		// Row 1: vertical (░) + top border.
+		assert.Equal(t, "░┌──┐", rows[1])
+		// Row 2: vertical (░) + content.
+		assert.Equal(t, "░│hi│", rows[2])
+		// Row 3: BottomLeft corner (░) + bottom border.
+		assert.Equal(t, "░└──┘", rows[3])
 	})
 }
 
 func TestBoxShadowWithColors(t *testing.T) {
 	t.Run("shadow gets its own ANSI codes", func(t *testing.T) {
 		ForceColors(true)
-		got := Box().Red().Shadow(ShadowBottomRight).String("x")
+		got := Box().Red().Shadow(ShadowBottomRight, ShadowLight).String("x")
 		rows := strings.Split(got, "\n")
 		// Shadow rows should contain the bright-black code (default shadow color).
 		// The shadow bottom row should have shadow styling.
@@ -1219,9 +1221,10 @@ func TestBoxShadowWithColors(t *testing.T) {
 		assert.Equal(t, true, strings.Contains(lastRow, "\x1b[90m"))
 	})
 
-	t.Run("custom shadow style overrides glyphs", func(t *testing.T) {
+	t.Run("custom shadow style renders correct glyphs", func(t *testing.T) {
 		ForceColors(false)
-		got := Box().Shadow(ShadowBottomRight).ShadowSty(ShadowBlock).String("x")
+		defer ForceColors(true)
+		got := Box().Shadow(ShadowBottomRight, ShadowBlock).String("x")
 		rows := strings.Split(got, "\n")
 		// Shadow should use █ instead of ░.
 		assert.Equal(t, true, strings.Contains(rows[1], "█"))
@@ -1234,7 +1237,7 @@ func TestBoxShadowWithPadding(t *testing.T) {
 	defer ForceColors(true)
 
 	t.Run("shadow works with padding", func(t *testing.T) {
-		got := Box().Padding(1).Shadow(ShadowBottomRight).String("x")
+		got := Box().Padding(1).Shadow(ShadowBottomRight, ShadowLight).String("x")
 		rows := strings.Split(got, "\n")
 		// Box has padding so more rows: top border, top pad, content, bottom pad, bottom border + shadow bottom.
 		assert.Equal(t, 6, len(rows))
@@ -1249,7 +1252,7 @@ func TestBoxShadowImmutability(t *testing.T) {
 
 	t.Run("Shadow does not modify original", func(t *testing.T) {
 		base := Box()
-		shadowed := base.Shadow(ShadowBottomRight)
+		shadowed := base.Shadow(ShadowBottomRight, ShadowLight)
 
 		baseGot := base.String("x")
 		shadowGot := shadowed.String("x")
@@ -1262,16 +1265,18 @@ func TestBoxShadowImmutability(t *testing.T) {
 		assert.Equal(t, 4, len(shadowRows))
 	})
 
-	t.Run("ShadowSty does not modify original shadow", func(t *testing.T) {
-		base := Box().Shadow(ShadowBottomRight)
-		custom := base.ShadowSty(ShadowBlock)
+	t.Run("Shadow with different styles does not cross-contaminate", func(t *testing.T) {
+		base := Box()
+		light := base.Shadow(ShadowBottomRight, ShadowLight)
+		block := base.Shadow(ShadowBottomRight, ShadowBlock)
 
-		baseGot := base.String("x")
-		customGot := custom.String("x")
+		lightGot := light.String("x")
+		blockGot := block.String("x")
 
-		// Base uses ░, custom uses █.
-		assert.Equal(t, true, strings.Contains(baseGot, "░"))
-		assert.Equal(t, true, strings.Contains(customGot, "█"))
-		assert.Equal(t, false, strings.Contains(baseGot, "█"))
+		// Light uses ░, block uses █.
+		assert.Equal(t, true, strings.Contains(lightGot, "░"))
+		assert.Equal(t, true, strings.Contains(blockGot, "█"))
+		assert.Equal(t, false, strings.Contains(lightGot, "█"))
+		assert.Equal(t, false, strings.Contains(blockGot, "░"))
 	})
 }

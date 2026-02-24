@@ -363,24 +363,14 @@ func (b *box) DisableRight() BoxStyle {
 
 // --- Shadow ---
 
-// Shadow enables a shadow effect in the given direction using
-// [ShadowLight] glyphs and dim styling by default.
-func (b *box) Shadow(pos ShadowPosition) BoxStyle {
+// Shadow enables a shadow effect in the given direction using the
+// provided [ShadowStyle]. Shadow glyphs are rendered with bright-black
+// color by default; use [ShadowDim], [ShadowBlack], or
+// [ShadowBrightBlack] to change the color.
+func (b *box) Shadow(pos ShadowPosition, sty ShadowStyle) BoxStyle {
 	cp := copyBox(b)
-	s := ShadowLight
-	cp.shadow = &s
+	cp.shadow = &sty
 	cp.shadowPos = pos
-	if len(cp.shadowCodes) == 0 {
-		cp.shadowCodes = []string{cBrightBlack}
-	}
-	return cp
-}
-
-// ShadowSty sets a custom [ShadowStyle] for the shadow glyphs.
-// If no shadow has been enabled yet, it enables one at [ShadowBottomRight].
-func (b *box) ShadowSty(s ShadowStyle) BoxStyle {
-	cp := copyBox(b)
-	cp.shadow = &s
 	if len(cp.shadowCodes) == 0 {
 		cp.shadowCodes = []string{cBrightBlack}
 	}
@@ -713,6 +703,14 @@ func (b *box) render(content string) string {
 
 // applyShadow adds shadow glyphs to the collected box rows based on
 // the shadow position. It returns a new slice with the shadow applied.
+//
+// The shadow forms an L-shape with three visible corners. For example,
+// ShadowBottomRight produces:
+//
+//	┌────┐
+//	│ hi │╮   ← TopRight corner
+//	└────┘│   ← Vertical
+//	 ╰────╯   ← BottomLeft, Horizontals, BottomRight
 func (b *box) applyShadow(rows []string, boxVisW int) []string {
 	s := b.shadow
 	n := len(rows)
@@ -720,65 +718,87 @@ func (b *box) applyShadow(rows []string, boxVisW int) []string {
 		return rows
 	}
 
-	// Shadow glyph helpers — styled individually.
+	// Styled glyphs.
 	shadowV := b.wrapShadow(s.Vertical)
 
 	// Visible width of the vertical glyph (usually 1).
 	vertW := visibleWidth(s.Vertical)
 	spacer := strings.Repeat(" ", vertW)
 
-	// Horizontal count for the bottom/top shadow row.
+	// Horizontal fill count for the shadow bar (between the two corners).
+	// The bar spans boxVisW visible characters total: two corners (each
+	// vertW wide) plus horizontal fill in between.
 	horzW := visibleWidth(s.Horizontal)
-	hCount := boxVisW / horzW
-	if hCount < 1 {
-		hCount = 1
+	hFill := boxVisW - 2*vertW
+	if hFill < 0 {
+		hFill = 0
 	}
-
-	// Build a styled bottom/top shadow row. The row spans the box width
-	// plus the shadow column, using the appropriate corner at the end.
-	buildShadowRow := func(corner, indent string, cornerFirst bool) string {
-		hBar := strings.Repeat(s.Horizontal, hCount-1)
-		if cornerFirst {
-			return b.wrapShadow(corner+hBar) + indent
-		}
-		return indent + b.wrapShadow(hBar+corner)
+	hCount := 0
+	if horzW > 0 {
+		hCount = hFill / horzW
 	}
 
 	switch b.shadowPos {
 	case ShadowBottomRight:
+		// Right column: TopRight corner at top, Vertical for the rest.
+		// Bottom row:   BottomLeft corner, Horizontals, BottomRight corner.
 		result := make([]string, 0, n+1)
 		result = append(result, rows[0]+spacer)
-		for i := 1; i < n; i++ {
-			result = append(result, rows[i]+shadowV)
+		if n > 1 {
+			result = append(result, rows[1]+b.wrapShadow(s.TopRight))
+			for i := 2; i < n; i++ {
+				result = append(result, rows[i]+shadowV)
+			}
 		}
-		result = append(result, buildShadowRow(s.BottomRight, spacer, false))
+		hBar := s.BottomLeft + strings.Repeat(s.Horizontal, hCount) + s.BottomRight
+		result = append(result, spacer+b.wrapShadow(hBar))
 		return result
 
 	case ShadowBottomLeft:
+		// Left column: TopLeft corner at top, Vertical for the rest.
+		// Bottom row:  BottomLeft corner, Horizontals, BottomRight corner.
 		result := make([]string, 0, n+1)
 		result = append(result, spacer+rows[0])
-		for i := 1; i < n; i++ {
-			result = append(result, shadowV+rows[i])
+		if n > 1 {
+			result = append(result, b.wrapShadow(s.TopLeft)+rows[1])
+			for i := 2; i < n; i++ {
+				result = append(result, shadowV+rows[i])
+			}
 		}
-		result = append(result, buildShadowRow(s.BottomLeft, spacer, true))
+		hBar := s.BottomLeft + strings.Repeat(s.Horizontal, hCount) + s.BottomRight
+		result = append(result, b.wrapShadow(hBar)+spacer)
 		return result
 
 	case ShadowTopRight:
+		// Top row:     TopLeft corner, Horizontals, TopRight corner.
+		// Right column: Vertical for most rows, BottomRight corner at bottom.
 		result := make([]string, 0, n+1)
-		result = append(result, buildShadowRow(s.TopRight, spacer, false))
+		hBar := s.TopLeft + strings.Repeat(s.Horizontal, hCount) + s.TopRight
+		result = append(result, spacer+b.wrapShadow(hBar))
 		for i := 0; i < n-1; i++ {
 			result = append(result, rows[i]+shadowV)
 		}
-		result = append(result, rows[n-1]+spacer)
+		if n > 1 {
+			result = append(result, rows[n-1]+b.wrapShadow(s.BottomRight))
+		} else {
+			result = append(result, rows[0]+b.wrapShadow(s.BottomRight))
+		}
 		return result
 
 	case ShadowTopLeft:
+		// Top row:      TopLeft corner, Horizontals, TopRight corner.
+		// Left column:  Vertical for most rows, BottomLeft corner at bottom.
 		result := make([]string, 0, n+1)
-		result = append(result, buildShadowRow(s.TopLeft, spacer, true))
+		hBar := s.TopLeft + strings.Repeat(s.Horizontal, hCount) + s.TopRight
+		result = append(result, b.wrapShadow(hBar)+spacer)
 		for i := 0; i < n-1; i++ {
 			result = append(result, shadowV+rows[i])
 		}
-		result = append(result, spacer+rows[n-1])
+		if n > 1 {
+			result = append(result, b.wrapShadow(s.BottomLeft)+rows[n-1])
+		} else {
+			result = append(result, b.wrapShadow(s.BottomLeft)+rows[0])
+		}
 		return result
 	}
 
