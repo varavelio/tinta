@@ -18,10 +18,20 @@ type Border struct {
 
 // Predefined border styles.
 var (
-	BorderSimple  = Border{"┌", "┐", "└", "┘", "─", "│"}
-	BorderRounded = Border{"╭", "╮", "╰", "╯", "─", "│"}
-	BorderDouble  = Border{"╔", "╗", "╚", "╝", "═", "║"}
-	BorderHeavy   = Border{"┏", "┓", "┗", "┛", "━", "┃"}
+	BorderSimple        = Border{"┌", "┐", "└", "┘", "─", "│"}
+	BorderDashed        = Border{"┌", "┐", "└", "┘", "╌", "╎"}
+	BorderDotted        = Border{"┌", "┐", "└", "┘", "┈", "┊"}
+	BorderRounded       = Border{"╭", "╮", "╰", "╯", "─", "│"}
+	BorderRoundedDashed = Border{"╭", "╮", "╰", "╯", "╌", "╎"}
+	BorderRoundedDotted = Border{"╭", "╮", "╰", "╯", "┈", "┊"}
+	BorderDouble        = Border{"╔", "╗", "╚", "╝", "═", "║"}
+	BorderHeavy         = Border{"┏", "┓", "┗", "┛", "━", "┃"}
+	BorderASCII         = Border{"+", "+", "+", "+", "-", "|"}
+	BorderBlock         = Border{"█", "█", "█", "█", "█", "█"}
+	BorderBlockHalf     = Border{"▀", "▀", "▄", "▄", "▀", "▄"}
+	BorderBlockLight    = Border{"░", "░", "░", "░", "░", "░"}
+	BorderBlockMedium   = Border{"▒", "▒", "▒", "▒", "▒", "▒"}
+	BorderBlockDark     = Border{"▓", "▓", "▓", "▓", "▓", "▓"}
 )
 
 // ShadowStyle defines the glyphs used to draw a shadow around a box.
