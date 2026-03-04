@@ -10,8 +10,6 @@ func fakeEnv(m map[string]string) func(string) string {
 	return func(key string) string { return m[key] }
 }
 
-// --- Color detection ---
-
 func TestColorDetection(t *testing.T) {
 	t.Run("NO_COLOR disables", func(t *testing.T) {
 		assert.Equal(t, false, colorEnabled(fakeEnv(map[string]string{"NO_COLOR": "1"})))
@@ -70,8 +68,6 @@ func TestColorDetectionEdgeCases(t *testing.T) {
 		assert.Equal(t, true, colorEnabled(fakeEnv(map[string]string{"FORCE_COLOR": "yes"})))
 	})
 }
-
-// --- ANSI stripping ---
 
 func TestStripANSI(t *testing.T) {
 	t.Run("plain text unchanged", func(t *testing.T) {

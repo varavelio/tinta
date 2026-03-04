@@ -14,8 +14,6 @@ func init() {
 	ForceColors(true)
 }
 
-// --- String output ---
-
 func TestString(t *testing.T) {
 	t.Run("foreground only", func(t *testing.T) {
 		assert.Equal(t, "\x1b[31merror\x1b[0m", Text().Red().String("error"))
@@ -47,8 +45,6 @@ func TestSprintf(t *testing.T) {
 		assert.Equal(t, "\x1b[31mcount: 42\x1b[0m", Text().Red().Sprintf("count: %d", 42))
 	})
 }
-
-// --- Text() entry point ---
 
 func TestTextEntry(t *testing.T) {
 	t.Run("text with no codes returns plain text", func(t *testing.T) {
@@ -88,8 +84,6 @@ func TestTextEntry(t *testing.T) {
 	})
 }
 
-// --- Disabled ---
-
 func TestDisabled(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
@@ -102,8 +96,6 @@ func TestDisabled(t *testing.T) {
 		assert.Equal(t, "n=5", Text().Green().Sprintf("n=%d", 5))
 	})
 }
-
-// --- Modifiers ---
 
 func TestModifiers(t *testing.T) {
 	t.Run("dim", func(t *testing.T) {
@@ -131,8 +123,6 @@ func TestModifiers(t *testing.T) {
 	})
 }
 
-// --- Modifier-only styles ---
-
 func TestBoldOnly(t *testing.T) {
 	t.Run("bold without color", func(t *testing.T) {
 		assert.Equal(t, "\x1b[1mbold\x1b[0m", Text().Bold().String("bold"))
@@ -144,8 +134,6 @@ func TestUnderlineOnly(t *testing.T) {
 		assert.Equal(t, "\x1b[4mlink\x1b[0m", Text().Underline().String("link"))
 	})
 }
-
-// --- Writer methods ---
 
 func TestFprint(t *testing.T) {
 	t.Run("fprint writes styled text", func(t *testing.T) {
@@ -170,8 +158,6 @@ func TestFprint(t *testing.T) {
 	})
 }
 
-// --- Immutability ---
-
 func TestImmutability(t *testing.T) {
 	t.Run("branching from same style does not corrupt", func(t *testing.T) {
 		base := Text().Red()
@@ -193,8 +179,6 @@ func TestImmutability(t *testing.T) {
 		assert.Equal(t, "\x1b[37;44;3mitalic\x1b[0m", c.String("italic"))
 	})
 }
-
-// --- All backgrounds ---
 
 func TestAllBackgrounds(t *testing.T) {
 	cases := []struct {
@@ -228,8 +212,6 @@ func TestAllBackgrounds(t *testing.T) {
 	}
 }
 
-// --- All foreground colors ---
-
 func TestAllForegrounds(t *testing.T) {
 	cases := []struct {
 		name string
@@ -262,22 +244,16 @@ func TestAllForegrounds(t *testing.T) {
 	}
 }
 
-// --- Render buffer exactness ---
-
 func TestRenderBufferExact(t *testing.T) {
 	t.Run("buffer has no excess capacity", func(t *testing.T) {
 		s := Text().White().OnBlue().Bold()
 		got := s.String("hello")
 
-		// \x1b[37;44;1mhello\x1b[0m
-		//  2 + 2+1+2+1+1 + 1 + 5 + 4 = 19
 		expected := "\x1b[37;44;1mhello\x1b[0m"
 		assert.Equal(t, expected, got)
 		assert.Equal(t, 19, len(got))
 	})
 }
-
-// --- Print/Println/Printf with SetOutput ---
 
 func TestPrintMethods(t *testing.T) {
 	t.Run("print does not append newline", func(t *testing.T) {
@@ -309,8 +285,6 @@ func TestPrintMethods(t *testing.T) {
 	})
 }
 
-// --- ForceColors round-trip ---
-
 func TestForceColorsRoundTrip(t *testing.T) {
 	t.Run("enable disable enable", func(t *testing.T) {
 		ForceColors(false)
@@ -322,11 +296,9 @@ func TestForceColorsRoundTrip(t *testing.T) {
 		ForceColors(false)
 		assert.Equal(t, "x", Text().Red().String("x"))
 
-		ForceColors(true) // restore
+		ForceColors(true)
 	})
 }
-
-// --- Fprint methods with disabled colors ---
 
 func TestFprintDisabled(t *testing.T) {
 	ForceColors(false)
@@ -356,8 +328,6 @@ func TestFprintDisabled(t *testing.T) {
 		assert.Equal(t, "n=42", buf.String())
 	})
 }
-
-// --- Edge cases ---
 
 func TestEmptyText(t *testing.T) {
 	t.Run("empty string still wraps in ANSI", func(t *testing.T) {
@@ -391,8 +361,6 @@ func TestSprintfMultipleVerbs(t *testing.T) {
 		assert.Equal(t, "\x1b[33mprogress: 3/10 (30.0%)\x1b[0m", got)
 	})
 }
-
-// --- Concurrency ---
 
 func TestConcurrentString(t *testing.T) {
 	t.Run("shared style used from many goroutines", func(t *testing.T) {
@@ -484,11 +452,11 @@ func TestConcurrentPrint(t *testing.T) {
 
 func TestConcurrentForceColors(t *testing.T) {
 	t.Run("toggle ForceColors while rendering", func(t *testing.T) {
-		defer ForceColors(true) // restore
+		defer ForceColors(true)
 
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
-			i := i // capture for Go <1.22
+			i := i
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -497,7 +465,6 @@ func TestConcurrentForceColors(t *testing.T) {
 				} else {
 					ForceColors(true)
 				}
-				// Should not panic or race; result depends on timing.
 				_ = Text().Red().String("x")
 			}()
 		}
@@ -526,7 +493,7 @@ func TestConcurrentFprintIndependent(t *testing.T) {
 	t.Run("concurrent Fprint to separate buffers", func(t *testing.T) {
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
-			i := i // capture for Go <1.22
+			i := i
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

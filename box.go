@@ -53,7 +53,7 @@ var (
 // preserve immutability; use the provided methods to configure the box.
 type BoxStyle struct {
 	border       Border
-	codes        []string // ANSI SGR codes for the border/background
+	codes        []string
 	padTop       int
 	padRight     int
 	padBottom    int
@@ -62,23 +62,23 @@ type BoxStyle struct {
 	marginRight  int
 	marginBottom int
 	marginLeft   int
-	center       bool             // center all content lines horizontally
-	centerTrim   bool             // trim whitespace from lines before centering
-	centerLines  map[int]struct{} // specific line indices to center (0-based)
-	centerFirst  bool             // center the first content line
-	centerLast   bool             // center the last content line
-	hideTop      bool             // hide the top border row
-	hideBottom   bool             // hide the bottom border row
-	hideLeft     bool             // hide the left vertical border
-	hideRight    bool             // hide the right vertical border
-	hideTopLeft  bool             // hide the top-left corner glyph
-	hideTopRight bool             // hide the top-right corner glyph
-	hideBotLeft  bool             // hide the bottom-left corner glyph
-	hideBotRight bool             // hide the bottom-right corner glyph
-	title        string           // text rendered inside the top border row
-	titleAlign   Align            // alignment of the title
-	footer       string           // text rendered inside the bottom border row
-	footerAlign  Align            // alignment of the footer
+	center       bool
+	centerTrim   bool
+	centerLines  map[int]struct{}
+	centerFirst  bool
+	centerLast   bool
+	hideTop      bool
+	hideBottom   bool
+	hideLeft     bool
+	hideRight    bool
+	hideTopLeft  bool
+	hideTopRight bool
+	hideBotLeft  bool
+	hideBotRight bool
+	title        string
+	titleAlign   Align
+	footer       string
+	footerAlign  Align
 }
 
 // Box returns a new [BoxStyle] with a simple border and no padding or margin.
@@ -86,8 +86,6 @@ func Box() *BoxStyle {
 	return &BoxStyle{border: BorderSimple}
 }
 
-// copyBox returns a deep copy of the BoxStyle, including the codes slice
-// and centerLines map.
 func copyBox(b *BoxStyle) *BoxStyle {
 	cp := *b
 	if len(b.codes) > 0 {
@@ -103,14 +101,11 @@ func copyBox(b *BoxStyle) *BoxStyle {
 	return &cp
 }
 
-// withCode returns a new BoxStyle with an additional ANSI code appended.
 func (b *BoxStyle) withCode(code string) *BoxStyle {
 	cp := copyBox(b)
 	cp.codes = append(cp.codes, code)
 	return cp
 }
-
-// --- Border style setters ---
 
 // Border sets a custom border using the provided [Border] struct.
 func (b *BoxStyle) Border(border Border) *BoxStyle {
@@ -118,8 +113,6 @@ func (b *BoxStyle) Border(border Border) *BoxStyle {
 	cp.border = border
 	return cp
 }
-
-// --- Layout: Padding ---
 
 // Padding sets equal padding on all four sides.
 func (b *BoxStyle) Padding(n int) *BoxStyle {
@@ -175,8 +168,6 @@ func (b *BoxStyle) PaddingY(n int) *BoxStyle {
 	return cp
 }
 
-// --- Layout: Margin ---
-
 // Margin sets equal margin on all four sides.
 func (b *BoxStyle) Margin(n int) *BoxStyle {
 	cp := copyBox(b)
@@ -231,8 +222,6 @@ func (b *BoxStyle) MarginY(n int) *BoxStyle {
 	return cp
 }
 
-// --- Content alignment ---
-
 // Center enables horizontal centering of content lines within the box.
 // Shorter lines are padded equally on both sides to match the widest line.
 func (b *BoxStyle) Center() *BoxStyle {
@@ -278,8 +267,6 @@ func (b *BoxStyle) CenterLastLine() *BoxStyle {
 	cp.centerLast = true
 	return cp
 }
-
-// --- Side visibility ---
 
 // DisableTop hides the top border row. The vertical borders on content
 // rows remain unchanged.
@@ -349,8 +336,6 @@ func (b *BoxStyle) DisableBottomRightCorner() *BoxStyle {
 	return cp
 }
 
-// --- Title and Footer ---
-
 // Title sets text to render inside the top border row. The align
 // parameter controls horizontal placement: [AlignLeft], [AlignCenter],
 // or [AlignRight]. The title is separated from corners by one
@@ -373,8 +358,6 @@ func (b *BoxStyle) Footer(text string, align Align) *BoxStyle {
 	return cp
 }
 
-// --- Colors (border + background) ---
-
 func (b *BoxStyle) OnBlack() *BoxStyle   { return b.withCode(cOnBlack) }
 func (b *BoxStyle) OnRed() *BoxStyle     { return b.withCode(cOnRed) }
 func (b *BoxStyle) OnGreen() *BoxStyle   { return b.withCode(cOnGreen) }
@@ -392,8 +375,6 @@ func (b *BoxStyle) OnBrightBlue() *BoxStyle    { return b.withCode(cOnBrightBlue
 func (b *BoxStyle) OnBrightMagenta() *BoxStyle { return b.withCode(cOnBrightMagenta) }
 func (b *BoxStyle) OnBrightCyan() *BoxStyle    { return b.withCode(cOnBrightCyan) }
 func (b *BoxStyle) OnBrightWhite() *BoxStyle   { return b.withCode(cOnBrightWhite) }
-
-// Foreground colors for the border glyphs.
 
 func (b *BoxStyle) Black() *BoxStyle   { return b.withCode(cBlack) }
 func (b *BoxStyle) Red() *BoxStyle     { return b.withCode(cRed) }
@@ -413,12 +394,8 @@ func (b *BoxStyle) BrightMagenta() *BoxStyle { return b.withCode(cBrightMagenta)
 func (b *BoxStyle) BrightCyan() *BoxStyle    { return b.withCode(cBrightCyan) }
 func (b *BoxStyle) BrightWhite() *BoxStyle   { return b.withCode(cBrightWhite) }
 
-// Modifiers for the border style.
-
 func (b *BoxStyle) Bold() *BoxStyle { return b.withCode(cBold) }
 func (b *BoxStyle) Dim() *BoxStyle  { return b.withCode(cDim) }
-
-// --- Output methods ---
 
 // String renders the box around the given content and returns the result.
 func (b *BoxStyle) String(content string) string {
@@ -460,10 +437,6 @@ func (b *BoxStyle) Fprintln(w io.Writer, content string) (int, error) {
 	return fmt.Fprintln(w, b.render(content))
 }
 
-// --- Internals ---
-
-// wrapCodes wraps s in the given ANSI SGR codes. Returns s unchanged if
-// colors are disabled or codes is empty.
 func wrapCodes(s string, codes []string) string {
 	if !isEnabled() || len(codes) == 0 {
 		return s
@@ -494,16 +467,10 @@ func wrapCodes(s string, codes []string) string {
 	return buf.String()
 }
 
-// wrapStyle wraps s in the box's border/background ANSI codes.
 func (b *BoxStyle) wrapStyle(s string) string {
 	return wrapCodes(s, b.codes)
 }
 
-// buildBorderRow constructs a top or bottom border row, optionally embedding
-// a title or footer text at the given alignment. The cornerLeft/cornerRight
-// are the glyph strings. hideLeft/hideRight control whether corners are
-// replaced with spaces. text is the title/footer content (empty = no text).
-// frameW is the total visible width of the frame.
 func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hideRight bool, text string, align Align, frameW int) string {
 	cl := cornerLeft
 	cr := cornerRight
@@ -528,13 +495,9 @@ func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hide
 		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
 	}
 
-	// The title/footer text is padded with one horizontal glyph on each
-	// side as a visual separator from the corners.
 	textW := visibleWidth(text)
-	// Minimum: 1 glyph + text + 1 glyph. If not enough room, truncate.
 	minNeeded := horW + textW + horW
 	if fillW < minNeeded {
-		// Not enough space — fall back to plain border.
 		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
 	}
 
@@ -546,11 +509,9 @@ func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hide
 		leftGlyphs = remaining / 2 / horW
 		rightGlyphs = (remaining - leftGlyphs*horW) / horW
 	case AlignRight:
-		// At least 1 glyph on right side as separator.
 		rightGlyphs = 1
 		leftGlyphs = (remaining - rightGlyphs*horW) / horW
 	default: // AlignLeft
-		// At least 1 glyph on left side as separator.
 		leftGlyphs = 1
 		rightGlyphs = (remaining - leftGlyphs*horW) / horW
 	}
@@ -562,18 +523,15 @@ func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hide
 		cr
 }
 
-// render builds the full box frame around content.
 func (b *BoxStyle) render(content string) string {
 	lines := strings.Split(content, "\n")
 
-	// Apply trim if CenterTrim is active.
 	if b.centerTrim {
 		for i, line := range lines {
 			lines[i] = strings.TrimSpace(line)
 		}
 	}
 
-	// Find the widest visible line.
 	maxW := 0
 	for _, line := range lines {
 		w := visibleWidth(line)
@@ -582,15 +540,8 @@ func (b *BoxStyle) render(content string) string {
 		}
 	}
 
-	// Inner width = content width + horizontal padding.
 	innerW := maxW + b.padLeft + b.padRight
 
-	// If a title or footer is set, the inner width may need to expand
-	// so the border row has room for the text plus separator glyphs.
-	// The fill area in a border row = frameW - cornerLeftW - cornerRightW.
-	// With standard borders: fillW == innerW (since corner and vertical
-	// glyphs are the same width). We compute the minimum fill width
-	// needed for the text: visibleWidth(text) + 2 * horizontalGlyphWidth.
 	horW := visibleWidth(b.border.Horizontal)
 	if horW == 0 {
 		horW = 1
@@ -599,8 +550,6 @@ func (b *BoxStyle) render(content string) string {
 	crW := visibleWidth(b.border.TopRight)
 	if b.title != "" {
 		needed := visibleWidth(b.title) + 2*horW
-		// fillW = frameW - clW - crW = vertW + innerW + vertW - clW - crW
-		// We need fillW >= needed, so innerW >= needed - (vertW+vertW-clW-crW)
 		vertSum := visibleWidth(b.border.Vertical)*2 - clW - crW
 		minInner := needed - vertSum
 		if minInner > innerW {
@@ -618,7 +567,6 @@ func (b *BoxStyle) render(content string) string {
 		}
 	}
 
-	// Determine glyph replacements for disabled sides.
 	leftVert := b.border.Vertical
 	rightVert := b.border.Vertical
 	if b.hideLeft {
@@ -628,7 +576,6 @@ func (b *BoxStyle) render(content string) string {
 		rightVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
 	}
 
-	// Collect box rows (without margin, without trailing \n).
 	var boxRows []string
 	totalBodyRows := b.padTop + len(lines) + b.padBottom
 
@@ -664,7 +611,6 @@ func (b *BoxStyle) render(content string) string {
 
 	frameW := visibleWidth(b.border.Vertical) + innerW + visibleWidth(b.border.Vertical)
 
-	// Top border.
 	if !b.hideTop {
 		topBar := b.buildBorderRow(
 			b.border.TopLeft, b.border.TopRight,
@@ -674,14 +620,12 @@ func (b *BoxStyle) render(content string) string {
 		boxRows = append(boxRows, b.wrapStyle(topBar))
 	}
 
-	// Top padding rows.
 	for i := 0; i < b.padTop; i++ {
 		leftGlyph, rightGlyph := bodyEdgeGlyphs(i)
 		padLine := leftGlyph + strings.Repeat(" ", innerW) + rightGlyph
 		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 
-	// Content rows.
 	lastIdx := len(lines) - 1
 	for i := 0; i < len(lines); i++ {
 		bodyIdx := b.padTop + i
@@ -715,14 +659,12 @@ func (b *BoxStyle) render(content string) string {
 			}
 		}
 
-		// Chrome parts wrapped individually to prevent nested ANSI corruption.
 		row := b.wrapStyle(leftGlyph+strings.Repeat(" ", b.padLeft+leftPad)) +
 			line +
 			b.wrapStyle(strings.Repeat(" ", rightPad+b.padRight)+rightGlyph)
 		boxRows = append(boxRows, row)
 	}
 
-	// Bottom padding rows.
 	for i := 0; i < b.padBottom; i++ {
 		bodyIdx := b.padTop + len(lines) + i
 		leftGlyph, rightGlyph := bodyEdgeGlyphs(bodyIdx)
@@ -730,7 +672,6 @@ func (b *BoxStyle) render(content string) string {
 		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 
-	// Bottom border.
 	if !b.hideBottom {
 		botBar := b.buildBorderRow(
 			b.border.BottomLeft, b.border.BottomRight,
@@ -740,14 +681,11 @@ func (b *BoxStyle) render(content string) string {
 		boxRows = append(boxRows, b.wrapStyle(botBar))
 	}
 
-	// Track the index of the bottom border row (if present). This determines
-	// trailing-newline behavior.
 	bottomBorderIdx := -1
 	if !b.hideBottom {
 		bottomBorderIdx = len(boxRows) - 1
 	}
 
-	// Assemble final output with margins.
 	marginLeft := strings.Repeat(" ", b.marginLeft)
 	marginRight := strings.Repeat(" ", b.marginRight)
 
@@ -761,12 +699,7 @@ func (b *BoxStyle) render(content string) string {
 		out.WriteString(marginLeft)
 		out.WriteString(boxRows[i])
 		out.WriteString(marginRight)
-		// The final rendered row never gets a trailing \n.
-		// The bottom border (if present) is final.
-		// When the bottom border is hidden,
-		// the last content/padding row still gets \n (legacy behavior).
 		if bottomBorderIdx >= 0 && i == bottomBorderIdx {
-			// Bottom border is present and this IS it — no trailing \n.
 		} else {
 			out.WriteByte('\n')
 		}

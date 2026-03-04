@@ -7,7 +7,6 @@ import (
 	"sync"
 )
 
-// Package-level state, protected by mutex.
 var (
 	mu      sync.RWMutex
 	output  io.Writer = os.Stdout
@@ -76,10 +75,7 @@ func isTerminal(w io.Writer) bool {
 	return stat.Mode()&os.ModeCharDevice != 0
 }
 
-// stripANSI removes all ANSI escape sequences from s.
-// It handles CSI sequences (\x1b[...X) and OSC sequences (\x1b]...ST).
 func stripANSI(s string) string {
-	// Fast path: no escape character at all.
 	if strings.IndexByte(s, '\x1b') < 0 {
 		return s
 	}
@@ -94,12 +90,11 @@ func stripANSI(s string) string {
 			i++
 			continue
 		}
-		// Skip ESC and the byte after it.
 		if i+1 >= len(s) {
 			break
 		}
 		switch s[i+1] {
-		case '[': // CSI: consume until 0x40–0x7E
+		case '[':
 			j := i + 2
 			for j < len(s) && s[j] < 0x40 || s[j] > 0x7E {
 				if s[j] >= 0x40 && s[j] <= 0x7E {
@@ -108,10 +103,10 @@ func stripANSI(s string) string {
 				j++
 			}
 			if j < len(s) {
-				j++ // skip final byte
+				j++
 			}
 			i = j
-		case ']': // OSC: consume until ST (\x1b\\) or BEL (\x07)
+		case ']':
 			j := i + 2
 			for j < len(s) {
 				if s[j] == '\x07' {
@@ -126,15 +121,12 @@ func stripANSI(s string) string {
 			}
 			i = j
 		default:
-			// Two-byte escape (e.g. \x1bM). Skip both.
 			i += 2
 		}
 	}
 	return b.String()
 }
 
-// visibleWidth returns the number of visible characters in s,
-// ignoring ANSI escape sequences.
 func visibleWidth(s string) int {
 	stripped := stripANSI(s)
 	n := 0

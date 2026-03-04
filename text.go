@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// ANSI SGR constants.
 const (
 	cReset = "\x1b[0m"
 
@@ -68,16 +67,12 @@ func Text() *TextStyle {
 	return &TextStyle{}
 }
 
-// with returns a new TextStyle that has all existing codes plus one more.
-// It copies the slice to guarantee immutability of the source.
 func (t *TextStyle) with(code string) *TextStyle {
 	cp := make([]string, len(t.codes)+1)
 	copy(cp, t.codes)
 	cp[len(t.codes)] = code
 	return &TextStyle{codes: cp}
 }
-
-// --- Foreground colors ---
 
 func (t *TextStyle) Black() *TextStyle   { return t.with(cBlack) }
 func (t *TextStyle) Red() *TextStyle     { return t.with(cRed) }
@@ -97,8 +92,6 @@ func (t *TextStyle) BrightMagenta() *TextStyle { return t.with(cBrightMagenta) }
 func (t *TextStyle) BrightCyan() *TextStyle    { return t.with(cBrightCyan) }
 func (t *TextStyle) BrightWhite() *TextStyle   { return t.with(cBrightWhite) }
 
-// --- Background colors (On*) ---
-
 func (t *TextStyle) OnBlack() *TextStyle   { return t.with(cOnBlack) }
 func (t *TextStyle) OnRed() *TextStyle     { return t.with(cOnRed) }
 func (t *TextStyle) OnGreen() *TextStyle   { return t.with(cOnGreen) }
@@ -117,8 +110,6 @@ func (t *TextStyle) OnBrightMagenta() *TextStyle { return t.with(cOnBrightMagent
 func (t *TextStyle) OnBrightCyan() *TextStyle    { return t.with(cOnBrightCyan) }
 func (t *TextStyle) OnBrightWhite() *TextStyle   { return t.with(cOnBrightWhite) }
 
-// --- Modifiers ---
-
 func (t *TextStyle) Bold() *TextStyle      { return t.with(cBold) }
 func (t *TextStyle) Dim() *TextStyle       { return t.with(cDim) }
 func (t *TextStyle) Italic() *TextStyle    { return t.with(cItalic) }
@@ -126,8 +117,6 @@ func (t *TextStyle) Underline() *TextStyle { return t.with(cUnderline) }
 func (t *TextStyle) Invert() *TextStyle    { return t.with(cInvert) }
 func (t *TextStyle) Hidden() *TextStyle    { return t.with(cHidden) }
 func (t *TextStyle) Strike() *TextStyle    { return t.with(cStrike) }
-
-// --- Output methods ---
 
 // String returns the styled text.
 func (t *TextStyle) String(s string) string {
@@ -169,22 +158,19 @@ func (t *TextStyle) Fprintln(w io.Writer, s string) (int, error) {
 	return fmt.Fprintln(w, t.render(s))
 }
 
-// --- Internals ---
-
 func (t *TextStyle) render(s string) string {
 	if !isEnabled() || len(t.codes) == 0 {
 		return s
 	}
 
-	// Compute exact size: \x1b[ + code1;code2;... + m + text + \x1b[0m
-	size := 2 // \x1b[
+	size := 2
 	for i, c := range t.codes {
 		if i > 0 {
-			size++ // ;
+			size++
 		}
 		size += len(c)
 	}
-	size++ // m
+	size++
 	size += len(s)
 	size += len(cReset)
 

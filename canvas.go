@@ -5,19 +5,16 @@ import (
 	"strings"
 )
 
-// cell represents a single terminal position: one visible rune plus any
-// ANSI style prefix.
 type cell struct {
-	r     rune   // visible character
-	style string // ANSI escape prefix (everything before the rune, e.g. "\x1b[31m")
+	r     rune
+	style string
 }
 
-// layer holds a parsed grid of cells at an (x, y) offset with a z-index.
 type layer struct {
-	grid [][]cell // rows of cells
+	grid [][]cell
 	x, y int
 	z    int
-	seq  int // insertion order for stable sort
+	seq  int
 }
 
 // CanvasStyle holds layers and compositing settings. Create one with
@@ -27,9 +24,9 @@ type layer struct {
 // All methods return a new CanvasStyle to preserve immutability.
 type CanvasStyle struct {
 	layers []layer
-	width  int // 0 = auto (derived from layer extents)
-	height int // 0 = auto
-	nextZ  int // auto-incrementing z counter
+	width  int
+	height int
+	nextZ  int
 }
 
 // Canvas returns a new empty [CanvasStyle].
@@ -37,7 +34,6 @@ func Canvas() *CanvasStyle {
 	return &CanvasStyle{}
 }
 
-// copyCanvas returns a deep copy of the CanvasStyle, including the layers slice.
 func copyCanvas(c *CanvasStyle) *CanvasStyle {
 	cp := *c
 	if len(c.layers) > 0 {
@@ -107,7 +103,6 @@ func (c *CanvasStyle) String() string {
 		return ""
 	}
 
-	// Sort layers by (z, seq) ascending.
 	sorted := make([]layer, len(c.layers))
 	copy(sorted, c.layers)
 	sort.SliceStable(sorted, func(i, j int) bool {
@@ -117,9 +112,6 @@ func (c *CanvasStyle) String() string {
 		return sorted[i].seq < sorted[j].seq
 	})
 
-	// Find the bounding box across all layers to determine the origin
-	// shift. This ensures negative x/y values expand the canvas rather
-	// than clipping content.
 	minX, minY := 0, 0
 	maxX, maxY := 0, 0
 	hasContent := false
@@ -154,9 +146,6 @@ func (c *CanvasStyle) String() string {
 		return ""
 	}
 
-	// Origin shift: move everything so that the minimum coordinate is 0.
-	// When fixed dimensions are set, the shift still applies but the
-	// canvas is cropped to the fixed size.
 	shiftX := 0
 	if minX < 0 {
 		shiftX = -minX
@@ -166,7 +155,6 @@ func (c *CanvasStyle) String() string {
 		shiftY = -minY
 	}
 
-	// Determine canvas dimensions.
 	w := c.width
 	h := c.height
 	if w == 0 {
@@ -180,8 +168,6 @@ func (c *CanvasStyle) String() string {
 		return ""
 	}
 
-	// Build the composited grid. Positions start as plain spaces (the
-	// default background). Layers paint over these.
 	grid := make([][]cell, h)
 	for i := range grid {
 		grid[i] = make([]cell, w)
@@ -190,9 +176,6 @@ func (c *CanvasStyle) String() string {
 		}
 	}
 
-	// Paint layers in order (lowest z first). Each layer's cells fully
-	// overwrite whatever is below — all cells within a layer's grid are
-	// opaque. Positions outside a layer's grid are not touched.
 	for _, ly := range sorted {
 		for rowIdx, row := range ly.grid {
 			cy := ly.y + rowIdx + shiftY
@@ -209,30 +192,24 @@ func (c *CanvasStyle) String() string {
 		}
 	}
 
-	// Render the composited grid into a string with proper ANSI sequences.
 	var buf strings.Builder
 	for rowIdx, row := range grid {
 		if rowIdx > 0 {
 			buf.WriteByte('\n')
 		}
 
-		// Find the last non-blank cell to avoid trailing whitespace.
-		// A "blank" trailing cell is an unstyled space.
 		lastVisible := len(row) - 1
 		for lastVisible >= 0 && row[lastVisible].r == ' ' && row[lastVisible].style == "" {
 			lastVisible--
 		}
 
-		// Track the last style applied so we can avoid redundant resets/sets.
 		lastStyle := ""
 		for colIdx := 0; colIdx <= lastVisible; colIdx++ {
 			cl := row[colIdx]
 			if cl.style != lastStyle {
-				// Close previous style if any.
 				if lastStyle != "" {
 					buf.WriteString(cReset)
 				}
-				// Open new style if any.
 				if cl.style != "" {
 					buf.WriteString(cl.style)
 				}
@@ -240,7 +217,6 @@ func (c *CanvasStyle) String() string {
 			}
 			buf.WriteRune(cl.r)
 		}
-		// Close any open style at end of row.
 		if lastStyle != "" {
 			buf.WriteString(cReset)
 		}
@@ -249,15 +225,7 @@ func (c *CanvasStyle) String() string {
 	return buf.String()
 }
 
-// parseGrid converts a rendered string (possibly containing ANSI escape
-// sequences) into a 2D grid of cells. Each row corresponds to a line of
-// the input (split by \n). Within each row, ANSI sequences are accumulated
-// into a "current style" prefix that gets attached to each subsequent
-// visible rune.
-//
-// A reset sequence (\x1b[0m) clears the current style.
 func parseGrid(s string) [][]cell {
-	// Strip trailing newline to avoid a phantom empty row.
 	if len(s) > 0 && s[len(s)-1] == '\n' {
 		s = s[:len(s)-1]
 	}
@@ -274,11 +242,9 @@ func parseGrid(s string) [][]cell {
 	return grid
 }
 
-// parseLine converts a single line of text (with possible ANSI sequences)
-// into a slice of cells.
 func parseLine(line string) []cell {
 	var cells []cell
-	var styleBuf strings.Builder // accumulates ANSI sequences between visible runes
+	var styleBuf strings.Builder
 
 	j := 0
 	runes := []byte(line)
@@ -286,11 +252,10 @@ func parseLine(line string) []cell {
 
 	for j < n {
 		if runes[j] == '\x1b' {
-			// Start of an escape sequence. Capture the entire sequence.
 			start := j
 			if j+1 < n {
 				switch runes[j+1] {
-				case '[': // CSI sequence
+				case '[':
 					j += 2
 					for j < n {
 						if runes[j] >= 0x40 && runes[j] <= 0x7E {
@@ -299,7 +264,7 @@ func parseLine(line string) []cell {
 						}
 						j++
 					}
-				case ']': // OSC sequence
+				case ']':
 					j += 2
 					for j < n {
 						if runes[j] == '\x07' {
@@ -320,7 +285,6 @@ func parseLine(line string) []cell {
 			}
 			seq := line[start:j]
 
-			// Check if this is a reset. If so, clear the style buffer.
 			if seq == cReset {
 				styleBuf.Reset()
 			} else {
@@ -329,9 +293,6 @@ func parseLine(line string) []cell {
 			continue
 		}
 
-		// Visible character. We need to consume one UTF-8 rune.
-		// Since we're working with byte offsets but need rune boundaries,
-		// let's extract the rune.
 		r, size := decodeRune(line[j:])
 		cells = append(cells, cell{
 			r:     r,
@@ -343,9 +304,6 @@ func parseLine(line string) []cell {
 	return cells
 }
 
-// decodeRune decodes the first UTF-8 rune from s and returns it along with
-// its byte length. This avoids importing unicode/utf8 to keep dependencies
-// at zero.
 func decodeRune(s string) (rune, int) {
 	if len(s) == 0 {
 		return 0, 0
@@ -354,7 +312,6 @@ func decodeRune(s string) (rune, int) {
 	if b < 0x80 {
 		return rune(b), 1
 	}
-	// Determine byte length from leading bits.
 	var size int
 	switch {
 	case b>>5 == 0x06:
@@ -364,7 +321,7 @@ func decodeRune(s string) (rune, int) {
 	case b>>3 == 0x1E:
 		size = 4
 	default:
-		return rune(b), 1 // invalid leading byte, treat as single byte
+		return rune(b), 1
 	}
 	if len(s) < size {
 		return rune(b), 1
