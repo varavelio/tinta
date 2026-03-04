@@ -630,6 +630,37 @@ func (b *BoxStyle) render(content string) string {
 
 	// Collect box rows (without margin, without trailing \n).
 	var boxRows []string
+	totalBodyRows := b.padTop + len(lines) + b.padBottom
+
+	showTopLeftCap := b.hideTop && !b.hideLeft && !b.hideTopLeft
+	showTopRightCap := b.hideTop && !b.hideRight && !b.hideTopRight
+	showBotLeftCap := b.hideBottom && !b.hideLeft && !b.hideBotLeft
+	showBotRightCap := b.hideBottom && !b.hideRight && !b.hideBotRight
+
+	bodyEdgeGlyphs := func(bodyIdx int) (string, string) {
+		leftGlyph := leftVert
+		rightGlyph := rightVert
+
+		if bodyIdx == 0 {
+			if showTopLeftCap {
+				leftGlyph = b.border.TopLeft
+			}
+			if showTopRightCap {
+				rightGlyph = b.border.TopRight
+			}
+		}
+
+		if bodyIdx == totalBodyRows-1 {
+			if showBotLeftCap && !(bodyIdx == 0 && showTopLeftCap) {
+				leftGlyph = b.border.BottomLeft
+			}
+			if showBotRightCap && !(bodyIdx == 0 && showTopRightCap) {
+				rightGlyph = b.border.BottomRight
+			}
+		}
+
+		return leftGlyph, rightGlyph
+	}
 
 	frameW := visibleWidth(b.border.Vertical) + innerW + visibleWidth(b.border.Vertical)
 
@@ -645,13 +676,17 @@ func (b *BoxStyle) render(content string) string {
 
 	// Top padding rows.
 	for i := 0; i < b.padTop; i++ {
-		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
+		leftGlyph, rightGlyph := bodyEdgeGlyphs(i)
+		padLine := leftGlyph + strings.Repeat(" ", innerW) + rightGlyph
 		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 
 	// Content rows.
 	lastIdx := len(lines) - 1
 	for i := 0; i < len(lines); i++ {
+		bodyIdx := b.padTop + i
+		leftGlyph, rightGlyph := bodyEdgeGlyphs(bodyIdx)
+
 		line := lines[i]
 		vis := visibleWidth(line)
 		availW := innerW - b.padLeft - b.padRight
@@ -681,15 +716,17 @@ func (b *BoxStyle) render(content string) string {
 		}
 
 		// Chrome parts wrapped individually to prevent nested ANSI corruption.
-		row := b.wrapStyle(leftVert+strings.Repeat(" ", b.padLeft+leftPad)) +
+		row := b.wrapStyle(leftGlyph+strings.Repeat(" ", b.padLeft+leftPad)) +
 			line +
-			b.wrapStyle(strings.Repeat(" ", rightPad+b.padRight)+rightVert)
+			b.wrapStyle(strings.Repeat(" ", rightPad+b.padRight)+rightGlyph)
 		boxRows = append(boxRows, row)
 	}
 
 	// Bottom padding rows.
 	for i := 0; i < b.padBottom; i++ {
-		padLine := leftVert + strings.Repeat(" ", innerW) + rightVert
+		bodyIdx := b.padTop + len(lines) + i
+		leftGlyph, rightGlyph := bodyEdgeGlyphs(bodyIdx)
+		padLine := leftGlyph + strings.Repeat(" ", innerW) + rightGlyph
 		boxRows = append(boxRows, b.wrapStyle(padLine))
 	}
 

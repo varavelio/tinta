@@ -672,7 +672,7 @@ func TestBoxDisableTop(t *testing.T) {
 		got := Box().DisableTop().String("hi")
 		lines := strings.Split(got, "\n")
 		// No top border — first line is content.
-		assert.Equal(t, "│hi│", lines[0])
+		assert.Equal(t, "┌hi┐", lines[0])
 		assert.Equal(t, "└──┘", lines[1])
 	})
 
@@ -680,7 +680,7 @@ func TestBoxDisableTop(t *testing.T) {
 		got := Box().DisableTop().Padding(1).String("x")
 		lines := strings.Split(got, "\n")
 		// First line is top padding row (no top border).
-		assert.Equal(t, "│   │", lines[0])
+		assert.Equal(t, "┌   ┐", lines[0])
 		assert.Equal(t, "│ x │", lines[1])
 		assert.Equal(t, "│   │", lines[2])
 		assert.Equal(t, "└───┘", lines[3])
@@ -694,7 +694,7 @@ func TestBoxDisableBottom(t *testing.T) {
 		got := Box().DisableBottom().String("hi")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┌──┐", lines[0])
-		assert.Equal(t, "│hi│", lines[1])
+		assert.Equal(t, "└hi┘", lines[1])
 		// No bottom border — string ends after content row + newline.
 		assert.Equal(t, 3, len(lines)) // top, content, trailing empty
 	})
@@ -705,7 +705,7 @@ func TestBoxDisableBottom(t *testing.T) {
 		assert.Equal(t, "┌───┐", lines[0])
 		assert.Equal(t, "│   │", lines[1])
 		assert.Equal(t, "│ x │", lines[2])
-		assert.Equal(t, "│   │", lines[3])
+		assert.Equal(t, "└   ┘", lines[3])
 		// No bottom border.
 		assert.Equal(t, 5, len(lines)) // 4 rows + trailing empty
 	})
@@ -742,7 +742,7 @@ func TestBoxDisableCombined(t *testing.T) {
 	t.Run("disable top and bottom leaves only content rows", func(t *testing.T) {
 		got := Box().DisableTop().DisableBottom().String("hi")
 		lines := strings.Split(got, "\n")
-		assert.Equal(t, "│hi│", lines[0])
+		assert.Equal(t, "┌hi┐", lines[0])
 		assert.Equal(t, 2, len(lines)) // content + trailing empty
 	})
 
@@ -766,7 +766,7 @@ func TestBoxDisableCombined(t *testing.T) {
 		got := Box().DisableTop().DisableLeft().String("hi")
 		lines := strings.Split(got, "\n")
 		// No top row. Content row has space instead of left vertical.
-		assert.Equal(t, " hi│", lines[0])
+		assert.Equal(t, " hi┐", lines[0])
 		assert.Equal(t, "└──┘", lines[1])
 	})
 
@@ -774,8 +774,38 @@ func TestBoxDisableCombined(t *testing.T) {
 		got := Box().DisableBottom().DisableRight().String("hi")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┌──┐", lines[0])
-		assert.Equal(t, "│hi ", lines[1])
+		assert.Equal(t, "└hi ", lines[1])
 		assert.Equal(t, 3, len(lines))
+	})
+}
+
+func TestBoxCornerCapsWithHiddenTopBottom(t *testing.T) {
+	t.Run("top hidden plus left hidden keeps top-right corner", func(t *testing.T) {
+		got := Box().DisableTop().DisableLeft().String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, " x┐", lines[0])
+		assert.Equal(t, "└─┘", lines[1])
+	})
+
+	t.Run("top hidden plus right hidden keeps top-left corner", func(t *testing.T) {
+		got := Box().DisableTop().DisableRight().String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌x ", lines[0])
+		assert.Equal(t, "└─┘", lines[1])
+	})
+
+	t.Run("bottom hidden plus left hidden keeps bottom-right corner", func(t *testing.T) {
+		got := Box().DisableBottom().DisableLeft().String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "┌─┐", lines[0])
+		assert.Equal(t, " x┘", lines[1])
+	})
+
+	t.Run("explicit corner disable wins for top-right cap", func(t *testing.T) {
+		got := Box().DisableTop().DisableLeft().DisableTopRightCorner().String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, " x│", lines[0])
+		assert.Equal(t, "└─┘", lines[1])
 	})
 }
 
@@ -790,7 +820,7 @@ func TestBoxDisableImmutability(t *testing.T) {
 		noTopLines := strings.Split(noTop.String("x"), "\n")
 
 		assert.Equal(t, "┌─┐", baseLines[0])  // base has top border
-		assert.Equal(t, "│x│", noTopLines[0]) // no top has content first
+		assert.Equal(t, "┌x┐", noTopLines[0]) // no top has content first with top corner caps
 		assert.Equal(t, 3, len(baseLines))    // top + content + bottom
 		assert.Equal(t, 2, len(noTopLines))   // content + bottom
 	})
@@ -1206,7 +1236,7 @@ func TestBoxTitle(t *testing.T) {
 		got := Box().DisableTop().Title("Hi", AlignLeft).String("ab")
 		rows := strings.Split(got, "\n")
 		// Top is hidden, so first row is content. Title widens the box.
-		assert.Equal(t, "│ab  │", rows[0])
+		assert.Equal(t, "┌ab  ┐", rows[0])
 		assert.Equal(t, "└────┘", rows[1])
 	})
 
@@ -1258,7 +1288,7 @@ func TestBoxFooter(t *testing.T) {
 		rows := strings.Split(got, "\n")
 		// Footer widens box, but bottom is hidden so footer is not shown.
 		assert.Equal(t, "┌────┐", rows[0])
-		assert.Equal(t, "│ab  │", rows[1])
+		assert.Equal(t, "└ab  ┘", rows[1])
 	})
 }
 
