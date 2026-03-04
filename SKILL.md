@@ -1,251 +1,124 @@
 ---
 name: tinta-expert
-description: Expert usage guide for generating Go CLI output with Tinta (github.com/varavelio/tinta). Use when building terminal styled text, bordered boxes, spacing layouts, shadows, and any terminal style related task.
+description: Generate Go CLI output with Tinta (github.com/varavelio/tinta). Use when building terminal styled text, bordered boxes, spacing layouts, shadows, and any terminal style related task.
 ---
 
 # Tinta Expert
 
-Use this skill to write production-quality Go code that **uses** `github.com/varavelio/tinta` correctly and idiomatically.
+Use this skill to produce correct, idiomatic Go code with `github.com/varavelio/tinta`.
 
-## When to use this skill
+## When to use
 
-Use this skill whenever the user asks for Go terminal UX such as:
+Use this skill when the task involves:
 
-- colored logs, status lines, banners, prompts, notices
-- boxed output with borders, padding, margins, alignment, or shadows
-- nested styled output (styled text inside boxes, boxes inside boxes)
-- deterministic output to custom writers (`bytes.Buffer`, files, tests)
-- explicit color behavior in CI/non-TTY environments
+- ANSI-styled CLI text (status lines, warnings, headings)
+- Boxed layouts with spacing/alignment and border customization
+- Layered composition of rendered strings via canvas
+- Stable output assertions in tests (`ForceColors` and buffers)
 
-## Core usage model
+## Instructions
 
-Always start from one of the two entry points:
+1. Start from the right primitive:
+   - `tinta.Text()` for inline styling
+   - `tinta.Box()` for framed layout
+   - `tinta.Canvas()` for multi-layer composition
+2. Keep chaining immutable. Every method returns a new style; never rely on mutation.
+3. Prefer readable output first; style should clarify hierarchy, not replace it.
+4. In tests, force deterministic color behavior when needed.
 
-- `tinta.Text()` for ANSI text styling
-- `tinta.Box()` for structural terminal layout
+## API essentials
 
-All chaining methods are immutable: each call returns a new style value.
+### Text
+
+- Foreground: `Black..White`, `BrightBlack..BrightWhite`
+- Background: `OnBlack..OnWhite`, `OnBrightBlack..OnBrightWhite`
+- Modifiers: `Bold`, `Dim`, `Italic`, `Underline`, `Invert`, `Hidden`, `Strike`
+- Output: `String`, `Sprintf`, `Print`, `Printf`, `Println`, `Fprint`, `Fprintf`, `Fprintln`
+
+### Box
+
+- Border setup:
+  - Presets: `tinta.BorderSimple`, `tinta.BorderDashed`, `tinta.BorderDotted`, `tinta.BorderRounded`, `tinta.BorderRoundedDashed`, `tinta.BorderRoundedDotted`, `tinta.BorderDouble`, `tinta.BorderHeavy`, `tinta.BorderASCII`, `tinta.BorderBlock`, `tinta.BorderBlockHalf`, `tinta.BorderBlockLight`, `tinta.BorderBlockMedium`, `tinta.BorderBlockDark`
+  - Custom struct fields:
+    - corners: `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`
+    - sides: `Top`, `Left`, `Right`, `Bottom`
+  - Apply with `Box().Border(borderValue)`
+- Spacing: `Padding*`, `Margin*` (`Padding`, `PaddingX`, `PaddingY`, etc.)
+- Content alignment: `Center`, `CenterTrim`, `CenterLine`, `CenterFirstLine`, `CenterLastLine`
+- Side visibility: `DisableTop`, `DisableBottom`, `DisableLeft`, `DisableRight`
+- Corner visibility: `DisableCorners`, `DisableTopLeftCorner`, `DisableTopRightCorner`, `DisableBottomLeftCorner`, `DisableBottomRightCorner`
+- Border labels:
+  - `Title(text, align)` on top border row
+  - `Footer(text, align)` on bottom border row
+  - `align`: `AlignLeft`, `AlignCenter`, `AlignRight`
+- Colors/modifiers: same color set as `Text`, plus `Bold`, `Dim`
+- Output: same method family as `Text`
+
+### Canvas
+
+- `Canvas()` creates an empty immutable compositor
+- `Add(s, x, y)` appends a layer with auto z
+- `AddZ(s, x, y, z)` appends with explicit z
+- `Width(w)` / `Height(h)` set fixed output dimensions (`0` means auto)
+- `String()` composites layers
+
+Compositing behavior:
+
+- Layers render by z ascending, then insertion order
+- Layer cells are opaque (overwrite underlying cells)
+- Negative `x/y` expands auto-sized canvas to fit all content
+- Fixed width/height applies cropping after expansion
+
+## Output and color control
+
+- `SetOutput(w)` changes default writer for `Print*`
+- `ForceColors(true|false)` overrides auto-detection
+- Auto-detection honors typical env flags (`NO_COLOR`, `FORCE_COLOR`, `CLICOLOR`, `TERM=dumb`)
+
+## Testing guidance
+
+- For plain-text assertions: `ForceColors(false)` and restore with `defer ForceColors(true)`
+- For ANSI assertions: `ForceColors(true)` and assert escape sequences deliberately
+- Prefer `String()` for deterministic snapshots
+- Use `bytes.Buffer` with `Fprint/Fprintf/Fprintln` when writer behavior is under test
+
+## Common pitfalls
+
+- Do not measure styled width with `len(s)`; ANSI is non-visible
+- Do not assume mutable style objects
+
+## Examples
+
+User: "Create a titled status panel with custom borders"
 
 ```go
-base := tinta.Text().Bold()
-errStyle := base.Red()
-okStyle := base.Green()
+panelBorder := tinta.Border{
+  TopLeft: "+", 
+  TopRight: "+", 
+  BottomLeft: "+", 
+  BottomRight: "+",
+  Top: "-", 
+  Left: "|", 
+  Right: "!", 
+  Bottom: "~",
+}
+
+out := tinta.Box().
+    Border(panelBorder).
+    PaddingX(1).
+    Title("Status", tinta.AlignCenter).
+    Footer("ok", tinta.AlignRight).
+    String("service started")
 ```
 
-## Text API (complete practical surface)
-
-### Foreground colors
-
-`Black`, `Red`, `Green`, `Yellow`, `Blue`, `Magenta`, `Cyan`, `White`
-
-### Bright foreground colors
-
-`BrightBlack`, `BrightRed`, `BrightGreen`, `BrightYellow`, `BrightBlue`, `BrightMagenta`, `BrightCyan`, `BrightWhite`
-
-### Background colors
-
-`OnBlack`, `OnRed`, `OnGreen`, `OnYellow`, `OnBlue`, `OnMagenta`, `OnCyan`, `OnWhite`
-
-### Bright background colors
-
-`OnBrightBlack`, `OnBrightRed`, `OnBrightGreen`, `OnBrightYellow`, `OnBrightBlue`, `OnBrightMagenta`, `OnBrightCyan`, `OnBrightWhite`
-
-### Text modifiers
-
-`Bold`, `Dim`, `Italic`, `Underline`, `Invert`, `Hidden`, `Strike`
-
-### Text output methods
-
-- Returns string: `String(s)`, `Sprintf(format, ...)`
-- Writes to default output: `Print`, `Printf`, `Println`
-- Writes to explicit writer: `Fprint`, `Fprintf`, `Fprintln`
-
-## Box API (complete practical surface)
-
-### Borders
-
-- Presets: `BorderSimple()` (default), `BorderRounded()`, `BorderDouble()`, `BorderHeavy()`
-- Custom: `Border(tinta.Border{...})`
-
-### Padding
-
-`Padding`, `PaddingTop`, `PaddingBottom`, `PaddingLeft`, `PaddingRight`, `PaddingX`, `PaddingY`
-
-### Margin
-
-`Margin`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`, `MarginX`, `MarginY`
-
-### Alignment
-
-- Full content: `Center()`
-- Trim then center: `CenterTrim()`
-- Selective: `CenterLine(n)`, `CenterFirstLine()`, `CenterLastLine()`
-
-### Side visibility
-
-`DisableTop`, `DisableBottom`, `DisableLeft`, `DisableRight`
-
-### Shadow
-
-- Enable: `Shadow(position, style)`
-- Positions: `ShadowBottomRight`, `ShadowBottomLeft`, `ShadowTopRight`, `ShadowTopLeft`
-- Styles: `ShadowLight`, `ShadowMedium`, `ShadowDark`, `ShadowBlock`, or custom `ShadowStyle`
-- Shadow color/modifiers: `ShadowDim`, `ShadowBlack`, `ShadowBrightBlack`
-
-### Box colors and modifiers
-
-Box supports the same foreground/background color methods as `Text`, plus:
-
-- modifiers: `Bold`, `Dim`
-
-### Box output methods
-
-- Returns string: `String(s)`, `Sprintf(format, ...)`
-- Writes to default output: `Print`, `Printf`, `Println`
-- Writes to explicit writer: `Fprint`, `Fprintf`, `Fprintln`
-
-## Output control and color behavior
-
-Use package-level output controls when needed:
-
-- `tinta.SetOutput(w)` changes the default writer used by `Print*`
-- `tinta.ForceColors(true/false)` overrides color auto-detection
-
-Color detection behavior:
-
-- disabled when any of: `NO_COLOR`, `NO_COLORS`, `DISABLE_COLORS`, `CLICOLOR=0`, `TERM=dumb`
-- forced when any of: `FORCE_COLOR`, `CLICOLOR_FORCE`
-- disable has precedence over force
-- when not forced/disabled, color depends on TTY detection
-
-## Recommended coding patterns
-
-### 1) Reusable style constants
+User: "Compose two boxes with depth"
 
 ```go
-var (
-    label = tinta.Text().BrightBlack()
-    ok    = tinta.Text().Green().Bold()
-    warn  = tinta.Text().Yellow().Bold()
-    fail  = tinta.Text().Red().Bold()
-)
-```
+front := tinta.Box().Border(tinta.BorderHeavy).PaddingX(2).String("front")
+back := tinta.Box().Border(tinta.BorderRounded).PaddingX(2).String("back")
 
-### 2) Prebuild messages with `String`/`Sprintf`
-
-```go
-status := tinta.Text().White().OnBlue().Sprintf(" service: %s ", "running")
-fmt.Println(status)
-```
-
-### 3) Structured sections with boxes
-
-```go
-panel := tinta.Box().BorderRounded().Blue().PaddingY(1).PaddingX(2)
-panel.Println("Deploy Summary\n- service: api\n- result: success")
-```
-
-### 4) Safe nested rendering
-
-```go
-inner := tinta.Box().BorderRounded().Green().PaddingX(1).String("Inner")
-outer := tinta.Box().BorderDouble().Blue().PaddingX(2)
-outer.Println(inner)
-```
-
-### 5) Test-friendly deterministic output
-
-```go
-var buf bytes.Buffer
-tinta.ForceColors(true)
-_, _ = tinta.Text().Red().Fprint(&buf, "error")
-```
-
-## Style composition guidance
-
-- Prefer building a small base style and branching from it.
-- Keep command output readable first; style should support hierarchy, not replace it.
-- Use bright accents sparingly for warnings/errors and key state transitions.
-- For multiline content with inconsistent indentation, prefer `CenterTrim()` over `Center()`.
-- For callouts/quotes, use side disabling patterns instead of over-styling text.
-
-## Canonical UI patterns
-
-### Error line
-
-```go
-tinta.Text().Red().Bold().Println("error: configuration file not found")
-```
-
-### Success summary box
-
-```go
-tinta.Box().BorderRounded().Green().PaddingY(1).PaddingX(2).
-    Println("Build completed\nArtifacts: 3\nDuration: 12.4s")
-```
-
-### Section heading with underline effect
-
-```go
-tinta.Box().BorderHeavy().BrightYellow().
-    DisableTop().DisableLeft().DisableRight().
-    Println("Deployment")
-```
-
-### Blockquote effect
-
-```go
-tinta.Box().BorderHeavy().BrightCyan().
-    DisableTop().DisableBottom().DisableRight().
-    PaddingLeft(1).
-    Println("The best way to predict the future is to invent it.")
-```
-
-### Emphasized card with shadow
-
-```go
-tinta.Box().BorderRounded().PaddingX(2).
-    Shadow(tinta.ShadowBottomRight, tinta.ShadowLight).
-    Println("Release v1.4.2")
-```
-
-## Mistakes to avoid
-
-- Do not mutate or reuse style values as mutable state assumptions.
-- Do not assume colors always render; CI/non-TTY may disable ANSI.
-- Do not rely on visual width via `len(s)` when mixing ANSI output.
-- Do not overuse chained modifiers; prioritize legibility.
-- Do not hardcode escape sequences directly when Tinta methods exist.
-
-## Agent execution checklist
-
-- [ ] import path is `github.com/varavelio/tinta`
-- [ ] style creation uses `Text()`/`Box()` chaining
-- [ ] output path uses correct method family (`String` vs `Print` vs `Fprint`)
-- [ ] colors are deterministic where required (`ForceColors` in tests/demo contexts)
-- [ ] nested styled content is rendered via Tinta, not manual ANSI concatenation
-- [ ] final output remains readable with colors disabled
-
-## Minimal reference snippets
-
-User request: "Print warning and success lines"
-
-```go
-tinta.Text().Yellow().Bold().Println("warning: retrying request")
-tinta.Text().Green().Println("ok: operation completed")
-```
-
-User request: "Show centered title card"
-
-```go
-tinta.Box().BorderDouble().Center().PaddingX(1).
-    Println("Build Pipeline\nrelease")
-```
-
-User request: "Render to buffer for assertions"
-
-```go
-var buf bytes.Buffer
-tinta.ForceColors(true)
-_, _ = tinta.Box().Red().Fprintln(&buf, "failed")
+scene := tinta.Canvas().
+    Add(back, -1, 1).
+    Add(front, 0, 0).
+    String()
 ```
