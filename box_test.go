@@ -81,13 +81,25 @@ func TestBoxBorderStyles(t *testing.T) {
 	t.Run("custom border", func(t *testing.T) {
 		custom := Border{
 			TopLeft: "+", TopRight: "+", BottomLeft: "+", BottomRight: "+",
-			Horizontal: "-", Vertical: "|",
+			Top: "-", Left: "|", Right: "|", Bottom: "-",
 		}
 		got := Box().Border(custom).String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "+-+", lines[0])
 		assert.Equal(t, "|x|", lines[1])
 		assert.Equal(t, "+-+", lines[2])
+	})
+
+	t.Run("independent border sides", func(t *testing.T) {
+		custom := Border{
+			TopLeft: "A", TopRight: "B", BottomLeft: "C", BottomRight: "D",
+			Top: "-", Left: "|", Right: "!", Bottom: "~",
+		}
+		got := Box().Border(custom).String("x")
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, "A-B", lines[0])
+		assert.Equal(t, "|x!", lines[1])
+		assert.Equal(t, "C~D", lines[2])
 	})
 }
 

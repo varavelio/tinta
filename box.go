@@ -10,10 +10,12 @@ import (
 type Border struct {
 	TopLeft     string
 	TopRight    string
-	BottomLeft  string
 	BottomRight string
-	Horizontal  string
-	Vertical    string
+	BottomLeft  string
+	Top         string
+	Right       string
+	Bottom      string
+	Left        string
 }
 
 // Align controls the horizontal alignment of title and footer text
@@ -31,20 +33,146 @@ const (
 
 // Predefined border styles.
 var (
-	BorderSimple        = Border{"┌", "┐", "└", "┘", "─", "│"}
-	BorderDashed        = Border{"┌", "┐", "└", "┘", "╌", "╎"}
-	BorderDotted        = Border{"┌", "┐", "└", "┘", "┈", "┊"}
-	BorderRounded       = Border{"╭", "╮", "╰", "╯", "─", "│"}
-	BorderRoundedDashed = Border{"╭", "╮", "╰", "╯", "╌", "╎"}
-	BorderRoundedDotted = Border{"╭", "╮", "╰", "╯", "┈", "┊"}
-	BorderDouble        = Border{"╔", "╗", "╚", "╝", "═", "║"}
-	BorderHeavy         = Border{"┏", "┓", "┗", "┛", "━", "┃"}
-	BorderASCII         = Border{"+", "+", "+", "+", "-", "|"}
-	BorderBlock         = Border{"█", "█", "█", "█", "█", "█"}
-	BorderBlockHalf     = Border{"▀", "▀", "▄", "▄", "▀", "▄"}
-	BorderBlockLight    = Border{"░", "░", "░", "░", "░", "░"}
-	BorderBlockMedium   = Border{"▒", "▒", "▒", "▒", "▒", "▒"}
-	BorderBlockDark     = Border{"▓", "▓", "▓", "▓", "▓", "▓"}
+	BorderSimple = Border{
+		TopLeft:     "┌",
+		TopRight:    "┐",
+		BottomLeft:  "└",
+		BottomRight: "┘",
+		Top:         "─",
+		Left:        "│",
+		Right:       "│",
+		Bottom:      "─",
+	}
+	BorderDashed = Border{
+		TopLeft:     "┌",
+		TopRight:    "┐",
+		BottomLeft:  "└",
+		BottomRight: "┘",
+		Top:         "╌",
+		Left:        "╎",
+		Right:       "╎",
+		Bottom:      "╌",
+	}
+	BorderDotted = Border{
+		TopLeft:     "┌",
+		TopRight:    "┐",
+		BottomLeft:  "└",
+		BottomRight: "┘",
+		Top:         "┈",
+		Left:        "┊",
+		Right:       "┊",
+		Bottom:      "┈",
+	}
+	BorderRounded = Border{
+		TopLeft:     "╭",
+		TopRight:    "╮",
+		BottomLeft:  "╰",
+		BottomRight: "╯",
+		Top:         "─",
+		Left:        "│",
+		Right:       "│",
+		Bottom:      "─",
+	}
+	BorderRoundedDashed = Border{
+		TopLeft:     "╭",
+		TopRight:    "╮",
+		BottomLeft:  "╰",
+		BottomRight: "╯",
+		Top:         "╌",
+		Left:        "╎",
+		Right:       "╎",
+		Bottom:      "╌",
+	}
+	BorderRoundedDotted = Border{
+		TopLeft:     "╭",
+		TopRight:    "╮",
+		BottomLeft:  "╰",
+		BottomRight: "╯",
+		Top:         "┈",
+		Left:        "┊",
+		Right:       "┊",
+		Bottom:      "┈",
+	}
+	BorderDouble = Border{
+		TopLeft:     "╔",
+		TopRight:    "╗",
+		BottomLeft:  "╚",
+		BottomRight: "╝",
+		Top:         "═",
+		Left:        "║",
+		Right:       "║",
+		Bottom:      "═",
+	}
+	BorderHeavy = Border{
+		TopLeft:     "┏",
+		TopRight:    "┓",
+		BottomLeft:  "┗",
+		BottomRight: "┛",
+		Top:         "━",
+		Left:        "┃",
+		Right:       "┃",
+		Bottom:      "━",
+	}
+	BorderASCII = Border{
+		TopLeft:     "+",
+		TopRight:    "+",
+		BottomLeft:  "+",
+		BottomRight: "+",
+		Top:         "-",
+		Left:        "|",
+		Right:       "|",
+		Bottom:      "-",
+	}
+	BorderBlock = Border{
+		TopLeft:     "█",
+		TopRight:    "█",
+		BottomLeft:  "█",
+		BottomRight: "█",
+		Top:         "█",
+		Left:        "█",
+		Right:       "█",
+		Bottom:      "█",
+	}
+	BorderBlockHalf = Border{
+		TopLeft:     "▀",
+		TopRight:    "▀",
+		BottomLeft:  "▄",
+		BottomRight: "▄",
+		Top:         "▀",
+		Left:        "▄",
+		Right:       "▄",
+		Bottom:      "▄",
+	}
+	BorderBlockLight = Border{
+		TopLeft:     "░",
+		TopRight:    "░",
+		BottomLeft:  "░",
+		BottomRight: "░",
+		Top:         "░",
+		Left:        "░",
+		Right:       "░",
+		Bottom:      "░",
+	}
+	BorderBlockMedium = Border{
+		TopLeft:     "▒",
+		TopRight:    "▒",
+		BottomLeft:  "▒",
+		BottomRight: "▒",
+		Top:         "▒",
+		Left:        "▒",
+		Right:       "▒",
+		Bottom:      "▒",
+	}
+	BorderBlockDark = Border{
+		TopLeft:     "▓",
+		TopRight:    "▓",
+		BottomLeft:  "▓",
+		BottomRight: "▓",
+		Top:         "▓",
+		Left:        "▓",
+		Right:       "▓",
+		Bottom:      "▓",
+	}
 )
 
 // BoxStyle holds the configuration for a bordered terminal container.
@@ -471,7 +599,7 @@ func (b *BoxStyle) wrapStyle(s string) string {
 	return wrapCodes(s, b.codes)
 }
 
-func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hideRight bool, text string, align Align, frameW int) string {
+func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight, edge string, hideLeft, hideRight bool, text string, align Align, frameW int) string {
 	cl := cornerLeft
 	cr := cornerRight
 	if hideLeft {
@@ -486,19 +614,19 @@ func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hide
 		fillW = 0
 	}
 
-	horW := visibleWidth(b.border.Horizontal)
+	horW := visibleWidth(edge)
 	if horW == 0 {
 		horW = 1
 	}
 
 	if text == "" {
-		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
+		return cl + strings.Repeat(edge, fillW/horW) + cr
 	}
 
 	textW := visibleWidth(text)
 	minNeeded := horW + textW + horW
 	if fillW < minNeeded {
-		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
+		return cl + strings.Repeat(edge, fillW/horW) + cr
 	}
 
 	remaining := fillW - textW
@@ -517,9 +645,9 @@ func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hide
 	}
 
 	return cl +
-		strings.Repeat(b.border.Horizontal, leftGlyphs) +
+		strings.Repeat(edge, leftGlyphs) +
 		text +
-		strings.Repeat(b.border.Horizontal, rightGlyphs) +
+		strings.Repeat(edge, rightGlyphs) +
 		cr
 }
 
@@ -542,16 +670,24 @@ func (b *BoxStyle) render(content string) string {
 
 	innerW := maxW + b.padLeft + b.padRight
 
-	horW := visibleWidth(b.border.Horizontal)
-	if horW == 0 {
-		horW = 1
+	topHorW := visibleWidth(b.border.Top)
+	if topHorW == 0 {
+		topHorW = 1
 	}
+	botHorW := visibleWidth(b.border.Bottom)
+	if botHorW == 0 {
+		botHorW = 1
+	}
+	leftW := visibleWidth(b.border.Left)
+	rightW := visibleWidth(b.border.Right)
+	leftSum := leftW + rightW
+
 	clW := visibleWidth(b.border.TopLeft)
 	crW := visibleWidth(b.border.TopRight)
 	if b.title != "" {
-		needed := visibleWidth(b.title) + 2*horW
-		vertSum := visibleWidth(b.border.Vertical)*2 - clW - crW
-		minInner := needed - vertSum
+		needed := visibleWidth(b.title) + 2*topHorW
+		edgeDelta := leftSum - clW - crW
+		minInner := needed - edgeDelta
 		if minInner > innerW {
 			innerW = minInner
 		}
@@ -559,21 +695,21 @@ func (b *BoxStyle) render(content string) string {
 	if b.footer != "" {
 		blW := visibleWidth(b.border.BottomLeft)
 		brW := visibleWidth(b.border.BottomRight)
-		needed := visibleWidth(b.footer) + 2*horW
-		vertSum := visibleWidth(b.border.Vertical)*2 - blW - brW
-		minInner := needed - vertSum
+		needed := visibleWidth(b.footer) + 2*botHorW
+		edgeDelta := leftSum - blW - brW
+		minInner := needed - edgeDelta
 		if minInner > innerW {
 			innerW = minInner
 		}
 	}
 
-	leftVert := b.border.Vertical
-	rightVert := b.border.Vertical
+	leftVert := b.border.Left
+	rightVert := b.border.Right
 	if b.hideLeft {
-		leftVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
+		leftVert = strings.Repeat(" ", leftW)
 	}
 	if b.hideRight {
-		rightVert = strings.Repeat(" ", visibleWidth(b.border.Vertical))
+		rightVert = strings.Repeat(" ", rightW)
 	}
 
 	var boxRows []string
@@ -609,11 +745,11 @@ func (b *BoxStyle) render(content string) string {
 		return leftGlyph, rightGlyph
 	}
 
-	frameW := visibleWidth(b.border.Vertical) + innerW + visibleWidth(b.border.Vertical)
+	frameW := leftW + innerW + rightW
 
 	if !b.hideTop {
 		topBar := b.buildBorderRow(
-			b.border.TopLeft, b.border.TopRight,
+			b.border.TopLeft, b.border.TopRight, b.border.Top,
 			b.hideTopLeft, b.hideTopRight,
 			b.title, b.titleAlign, frameW,
 		)
@@ -674,7 +810,7 @@ func (b *BoxStyle) render(content string) string {
 
 	if !b.hideBottom {
 		botBar := b.buildBorderRow(
-			b.border.BottomLeft, b.border.BottomRight,
+			b.border.BottomLeft, b.border.BottomRight, b.border.Bottom,
 			b.hideBotLeft, b.hideBotRight,
 			b.footer, b.footerAlign, frameW,
 		)

@@ -88,7 +88,7 @@ func main() {
 	section("Box: Custom border")
 	custom := t.Border{
 		TopLeft: "*", TopRight: "*", BottomLeft: "*", BottomRight: "*",
-		Horizontal: "~", Vertical: "!",
+		Top: "~", Left: "!", Right: "!", Bottom: "~",
 	}
 	t.Box().Border(custom).PaddingX(1).Println("Custom border")
 
