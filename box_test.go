@@ -1139,6 +1139,244 @@ func TestBoxCornerControlImmutability(t *testing.T) {
 	})
 }
 
+// --- Title and Footer ---
+
+func TestBoxTitle(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("title left aligned", func(t *testing.T) {
+		got := Box().Title("Hi", AlignLeft).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌─Hi────┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└───────┘", rows[2])
+	})
+
+	t.Run("title center aligned", func(t *testing.T) {
+		got := Box().Title("Hi", AlignCenter).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌──Hi───┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└───────┘", rows[2])
+	})
+
+	t.Run("title right aligned", func(t *testing.T) {
+		got := Box().Title("Hi", AlignRight).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌────Hi─┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└───────┘", rows[2])
+	})
+
+	t.Run("title with padding", func(t *testing.T) {
+		got := Box().PaddingX(1).Title("T", AlignLeft).String("hi")
+		rows := strings.Split(got, "\n")
+		// innerW = 2(content) + 1(padL) + 1(padR) = 4
+		// frameW = 1(│) + 4 + 1(│) = 6
+		// fillW = 6 - 1(┌) - 1(┐) = 4
+		// left: ─T─── → 1 glyph + T + 2 glyphs
+		assert.Equal(t, "┌─T──┐", rows[0])
+		assert.Equal(t, "│ hi │", rows[1])
+		assert.Equal(t, "└────┘", rows[2])
+	})
+
+	t.Run("title widens box when text is longer than content", func(t *testing.T) {
+		got := Box().Title("LongTitle", AlignLeft).String("ab")
+		rows := strings.Split(got, "\n")
+		// Title needs: 9(text) + 2(separator glyphs) = 11 fill width
+		// Without title: innerW = 2, frameW = 4, fillW = 2
+		// innerW must expand so fillW >= 11
+		// fillW = innerW (for standard borders), so innerW = 11
+		// frameW = 1 + 11 + 1 = 13
+		assert.Equal(t, "┌─LongTitle─┐", rows[0])
+		assert.Equal(t, "│ab         │", rows[1])
+		assert.Equal(t, "└───────────┘", rows[2])
+	})
+
+	t.Run("title with rounded border", func(t *testing.T) {
+		got := Box().Border(BorderRounded).Title("OK", AlignCenter).String("hi")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "╭─OK─╮", rows[0])
+		assert.Equal(t, "│hi  │", rows[1])
+		assert.Equal(t, "╰────╯", rows[2])
+	})
+
+	t.Run("title with hidden top does not show title", func(t *testing.T) {
+		got := Box().DisableTop().Title("Hi", AlignLeft).String("ab")
+		rows := strings.Split(got, "\n")
+		// Top is hidden, so first row is content. Title widens the box.
+		assert.Equal(t, "│ab  │", rows[0])
+		assert.Equal(t, "└────┘", rows[1])
+	})
+
+	t.Run("empty title has no effect", func(t *testing.T) {
+		got := Box().Title("", AlignLeft).String("hi")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌──┐", rows[0])
+	})
+}
+
+func TestBoxFooter(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("footer left aligned", func(t *testing.T) {
+		got := Box().Footer("Ok", AlignLeft).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌───────┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└─Ok────┘", rows[2])
+	})
+
+	t.Run("footer center aligned", func(t *testing.T) {
+		got := Box().Footer("Ok", AlignCenter).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌───────┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└──Ok───┘", rows[2])
+	})
+
+	t.Run("footer right aligned", func(t *testing.T) {
+		got := Box().Footer("Ok", AlignRight).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌───────┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└────Ok─┘", rows[2])
+	})
+
+	t.Run("footer widens box when text is longer than content", func(t *testing.T) {
+		got := Box().Footer("LongFooter", AlignLeft).String("ab")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌────────────┐", rows[0])
+		assert.Equal(t, "│ab          │", rows[1])
+		assert.Equal(t, "└─LongFooter─┘", rows[2])
+	})
+
+	t.Run("footer with hidden bottom does not show footer", func(t *testing.T) {
+		got := Box().DisableBottom().Footer("Ok", AlignLeft).String("ab")
+		rows := strings.Split(got, "\n")
+		// Footer widens box, but bottom is hidden so footer is not shown.
+		assert.Equal(t, "┌────┐", rows[0])
+		assert.Equal(t, "│ab  │", rows[1])
+	})
+}
+
+func TestBoxTitleAndFooter(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("title and footer together", func(t *testing.T) {
+		got := Box().
+			Title("Name", AlignLeft).
+			Footer("Done", AlignRight).
+			String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌─Name──┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└──Done─┘", rows[2])
+	})
+
+	t.Run("title and footer both center aligned", func(t *testing.T) {
+		got := Box().
+			Title("Top", AlignCenter).
+			Footer("Bot", AlignCenter).
+			String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌──Top──┐", rows[0])
+		assert.Equal(t, "│content│", rows[1])
+		assert.Equal(t, "└──Bot──┘", rows[2])
+	})
+
+	t.Run("title wider than footer expands box", func(t *testing.T) {
+		got := Box().
+			Title("VeryLongTitle", AlignLeft).
+			Footer("X", AlignLeft).
+			String("ab")
+		rows := strings.Split(got, "\n")
+		// Title needs: 13 + 2 = 15 fill, so innerW = 15, frameW = 17
+		assert.Equal(t, "┌─VeryLongTitle─┐", rows[0])
+		assert.Equal(t, "│ab             │", rows[1])
+		assert.Equal(t, "└─X─────────────┘", rows[2])
+	})
+
+	t.Run("footer wider than title expands box", func(t *testing.T) {
+		got := Box().
+			Title("X", AlignLeft).
+			Footer("VeryLongFooter", AlignLeft).
+			String("ab")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌─X──────────────┐", rows[0])
+		assert.Equal(t, "│ab              │", rows[1])
+		assert.Equal(t, "└─VeryLongFooter─┘", rows[2])
+	})
+}
+
+func TestBoxTitleImmutability(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("title does not modify original", func(t *testing.T) {
+		base := Box()
+		withTitle := base.Title("Hi", AlignLeft)
+
+		baseRows := strings.Split(base.String("ab"), "\n")
+		titleRows := strings.Split(withTitle.String("ab"), "\n")
+
+		assert.Equal(t, "┌──┐", baseRows[0])
+		assert.Equal(t, "┌─Hi─┐", titleRows[0])
+	})
+
+	t.Run("footer does not modify original", func(t *testing.T) {
+		base := Box()
+		withFooter := base.Footer("Ok", AlignLeft)
+
+		baseRows := strings.Split(base.String("ab"), "\n")
+		footerRows := strings.Split(withFooter.String("ab"), "\n")
+
+		assert.Equal(t, "└──┘", baseRows[2])
+		assert.Equal(t, "└─Ok─┘", footerRows[2])
+	})
+}
+
+func TestBoxTitleWithCornerControls(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
+
+	t.Run("title with hidden top-left corner", func(t *testing.T) {
+		got := Box().DisableTopLeftCorner().Title("Hi", AlignLeft).String("content")
+		rows := strings.Split(got, "\n")
+		// Corner replaced with space.
+		assert.Equal(t, " ─Hi────┐", rows[0])
+	})
+
+	t.Run("title with hidden top-right corner", func(t *testing.T) {
+		got := Box().DisableTopRightCorner().Title("Hi", AlignRight).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, "┌────Hi─ ", rows[0])
+	})
+
+	t.Run("footer with hidden bottom corners", func(t *testing.T) {
+		got := Box().DisableCorners().Footer("Ok", AlignCenter).String("content")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, " ──Ok─── ", rows[2])
+	})
+}
+
+func TestBoxTitleWithColors(t *testing.T) {
+	ForceColors(true)
+
+	t.Run("title is wrapped in box ANSI codes", func(t *testing.T) {
+		got := Box().Red().Title("Hi", AlignLeft).String("ab")
+		rows := strings.Split(got, "\n")
+		// The top border row (including title) should be wrapped in ANSI.
+		// Check it contains the title text and ANSI reset.
+		assert.Equal(t, true, strings.Contains(rows[0], "Hi"))
+		assert.Equal(t, true, strings.Contains(rows[0], "\x1b["))
+		assert.Equal(t, true, strings.Contains(rows[0], "\x1b[0m"))
+	})
+}
+
 // --- 3D border integration (using Canvas) ---
 
 func TestBox3DBorderEffect(t *testing.T) {

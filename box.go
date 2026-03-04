@@ -16,6 +16,19 @@ type Border struct {
 	Vertical    string
 }
 
+// Align controls the horizontal alignment of title and footer text
+// within a box border.
+type Align int
+
+const (
+	// AlignLeft places text at the left edge of the border (after the corner).
+	AlignLeft Align = iota
+	// AlignCenter places text at the horizontal center of the border.
+	AlignCenter
+	// AlignRight places text at the right edge of the border (before the corner).
+	AlignRight
+)
+
 // Predefined border styles.
 var (
 	BorderSimple        = Border{"┌", "┐", "└", "┘", "─", "│"}
@@ -62,6 +75,10 @@ type BoxStyle struct {
 	hideTopRight bool             // hide the top-right corner glyph
 	hideBotLeft  bool             // hide the bottom-left corner glyph
 	hideBotRight bool             // hide the bottom-right corner glyph
+	title        string           // text rendered inside the top border row
+	titleAlign   Align            // alignment of the title
+	footer       string           // text rendered inside the bottom border row
+	footerAlign  Align            // alignment of the footer
 }
 
 // Box returns a new [BoxStyle] with a simple border and no padding or margin.
@@ -332,6 +349,30 @@ func (b *BoxStyle) DisableBottomRightCorner() *BoxStyle {
 	return cp
 }
 
+// --- Title and Footer ---
+
+// Title sets text to render inside the top border row. The align
+// parameter controls horizontal placement: [AlignLeft], [AlignCenter],
+// or [AlignRight]. The title is separated from corners by one
+// horizontal glyph on each side for visual balance.
+func (b *BoxStyle) Title(text string, align Align) *BoxStyle {
+	cp := copyBox(b)
+	cp.title = text
+	cp.titleAlign = align
+	return cp
+}
+
+// Footer sets text to render inside the bottom border row. The align
+// parameter controls horizontal placement: [AlignLeft], [AlignCenter],
+// or [AlignRight]. The footer is separated from corners by one
+// horizontal glyph on each side for visual balance.
+func (b *BoxStyle) Footer(text string, align Align) *BoxStyle {
+	cp := copyBox(b)
+	cp.footer = text
+	cp.footerAlign = align
+	return cp
+}
+
 // --- Colors (border + background) ---
 
 func (b *BoxStyle) OnBlack() *BoxStyle   { return b.withCode(cOnBlack) }
@@ -458,6 +499,69 @@ func (b *BoxStyle) wrapStyle(s string) string {
 	return wrapCodes(s, b.codes)
 }
 
+// buildBorderRow constructs a top or bottom border row, optionally embedding
+// a title or footer text at the given alignment. The cornerLeft/cornerRight
+// are the glyph strings. hideLeft/hideRight control whether corners are
+// replaced with spaces. text is the title/footer content (empty = no text).
+// frameW is the total visible width of the frame.
+func (b *BoxStyle) buildBorderRow(cornerLeft, cornerRight string, hideLeft, hideRight bool, text string, align Align, frameW int) string {
+	cl := cornerLeft
+	cr := cornerRight
+	if hideLeft {
+		cl = strings.Repeat(" ", visibleWidth(cornerLeft))
+	}
+	if hideRight {
+		cr = strings.Repeat(" ", visibleWidth(cornerRight))
+	}
+
+	fillW := frameW - visibleWidth(cl) - visibleWidth(cr)
+	if fillW < 0 {
+		fillW = 0
+	}
+
+	horW := visibleWidth(b.border.Horizontal)
+	if horW == 0 {
+		horW = 1
+	}
+
+	if text == "" {
+		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
+	}
+
+	// The title/footer text is padded with one horizontal glyph on each
+	// side as a visual separator from the corners.
+	textW := visibleWidth(text)
+	// Minimum: 1 glyph + text + 1 glyph. If not enough room, truncate.
+	minNeeded := horW + textW + horW
+	if fillW < minNeeded {
+		// Not enough space — fall back to plain border.
+		return cl + strings.Repeat(b.border.Horizontal, fillW/horW) + cr
+	}
+
+	remaining := fillW - textW
+	var leftGlyphs, rightGlyphs int
+
+	switch align {
+	case AlignCenter:
+		leftGlyphs = remaining / 2 / horW
+		rightGlyphs = (remaining - leftGlyphs*horW) / horW
+	case AlignRight:
+		// At least 1 glyph on right side as separator.
+		rightGlyphs = 1
+		leftGlyphs = (remaining - rightGlyphs*horW) / horW
+	default: // AlignLeft
+		// At least 1 glyph on left side as separator.
+		leftGlyphs = 1
+		rightGlyphs = (remaining - leftGlyphs*horW) / horW
+	}
+
+	return cl +
+		strings.Repeat(b.border.Horizontal, leftGlyphs) +
+		text +
+		strings.Repeat(b.border.Horizontal, rightGlyphs) +
+		cr
+}
+
 // render builds the full box frame around content.
 func (b *BoxStyle) render(content string) string {
 	lines := strings.Split(content, "\n")
@@ -481,6 +585,39 @@ func (b *BoxStyle) render(content string) string {
 	// Inner width = content width + horizontal padding.
 	innerW := maxW + b.padLeft + b.padRight
 
+	// If a title or footer is set, the inner width may need to expand
+	// so the border row has room for the text plus separator glyphs.
+	// The fill area in a border row = frameW - cornerLeftW - cornerRightW.
+	// With standard borders: fillW == innerW (since corner and vertical
+	// glyphs are the same width). We compute the minimum fill width
+	// needed for the text: visibleWidth(text) + 2 * horizontalGlyphWidth.
+	horW := visibleWidth(b.border.Horizontal)
+	if horW == 0 {
+		horW = 1
+	}
+	clW := visibleWidth(b.border.TopLeft)
+	crW := visibleWidth(b.border.TopRight)
+	if b.title != "" {
+		needed := visibleWidth(b.title) + 2*horW
+		// fillW = frameW - clW - crW = vertW + innerW + vertW - clW - crW
+		// We need fillW >= needed, so innerW >= needed - (vertW+vertW-clW-crW)
+		vertSum := visibleWidth(b.border.Vertical)*2 - clW - crW
+		minInner := needed - vertSum
+		if minInner > innerW {
+			innerW = minInner
+		}
+	}
+	if b.footer != "" {
+		blW := visibleWidth(b.border.BottomLeft)
+		brW := visibleWidth(b.border.BottomRight)
+		needed := visibleWidth(b.footer) + 2*horW
+		vertSum := visibleWidth(b.border.Vertical)*2 - blW - brW
+		minInner := needed - vertSum
+		if minInner > innerW {
+			innerW = minInner
+		}
+	}
+
 	// Determine glyph replacements for disabled sides.
 	leftVert := b.border.Vertical
 	rightVert := b.border.Vertical
@@ -498,26 +635,11 @@ func (b *BoxStyle) render(content string) string {
 
 	// Top border.
 	if !b.hideTop {
-		tl := b.border.TopLeft
-		tr := b.border.TopRight
-		if b.hideTopLeft {
-			tl = strings.Repeat(" ", visibleWidth(b.border.TopLeft))
-		}
-		if b.hideTopRight {
-			tr = strings.Repeat(" ", visibleWidth(b.border.TopRight))
-		}
-
-		topFillW := frameW - visibleWidth(tl) - visibleWidth(tr)
-		if topFillW < 0 {
-			topFillW = 0
-		}
-		topCount := topFillW
-		horW := visibleWidth(b.border.Horizontal)
-		if horW > 0 {
-			topCount = topFillW / horW
-		}
-
-		topBar := tl + strings.Repeat(b.border.Horizontal, topCount) + tr
+		topBar := b.buildBorderRow(
+			b.border.TopLeft, b.border.TopRight,
+			b.hideTopLeft, b.hideTopRight,
+			b.title, b.titleAlign, frameW,
+		)
 		boxRows = append(boxRows, b.wrapStyle(topBar))
 	}
 
@@ -573,26 +695,11 @@ func (b *BoxStyle) render(content string) string {
 
 	// Bottom border.
 	if !b.hideBottom {
-		bl := b.border.BottomLeft
-		br := b.border.BottomRight
-		if b.hideBotLeft {
-			bl = strings.Repeat(" ", visibleWidth(b.border.BottomLeft))
-		}
-		if b.hideBotRight {
-			br = strings.Repeat(" ", visibleWidth(b.border.BottomRight))
-		}
-
-		botFillW := frameW - visibleWidth(bl) - visibleWidth(br)
-		if botFillW < 0 {
-			botFillW = 0
-		}
-		botCount := botFillW
-		horW := visibleWidth(b.border.Horizontal)
-		if horW > 0 {
-			botCount = botFillW / horW
-		}
-
-		botBar := bl + strings.Repeat(b.border.Horizontal, botCount) + br
+		botBar := b.buildBorderRow(
+			b.border.BottomLeft, b.border.BottomRight,
+			b.hideBotLeft, b.hideBotRight,
+			b.footer, b.footerAlign, frameW,
+		)
 		boxRows = append(boxRows, b.wrapStyle(botBar))
 	}
 

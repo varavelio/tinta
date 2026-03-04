@@ -134,23 +134,28 @@ func TestCanvasClipping(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("negative x clips left edge", func(t *testing.T) {
+	t.Run("negative x expands canvas left", func(t *testing.T) {
 		got := Canvas().Add("ABCDE", -2, 0).String()
-		// First 2 chars clipped, remaining at cols 0-2
-		assert.Equal(t, "CDE", got)
+		// Content is NOT clipped — canvas expands to fit it.
+		// The layer starts at x=-2 so the canvas shifts right by 2.
+		// All 5 chars are visible at their shifted positions.
+		assert.Equal(t, "ABCDE", got)
 	})
 
-	t.Run("negative y clips top rows", func(t *testing.T) {
+	t.Run("negative y expands canvas up", func(t *testing.T) {
 		got := Canvas().Add("row0\nrow1\nrow2", 0, -1).String()
-		// Row 0 of the text goes to y=-1 (clipped)
+		// Content is NOT clipped — canvas expands to fit all rows.
 		lines := strings.Split(got, "\n")
-		assert.Equal(t, "row1", lines[0])
-		assert.Equal(t, "row2", lines[1])
+		assert.Equal(t, 3, len(lines))
+		assert.Equal(t, "row0", lines[0])
+		assert.Equal(t, "row1", lines[1])
+		assert.Equal(t, "row2", lines[2])
 	})
 
-	t.Run("completely off-screen returns empty", func(t *testing.T) {
+	t.Run("completely negative still shows everything", func(t *testing.T) {
 		got := Canvas().Add("hello", -10, -10).String()
-		assert.Equal(t, "", got)
+		// Canvas expands to fit — content is visible.
+		assert.Equal(t, "hello", got)
 	})
 
 	t.Run("fixed size clips right and bottom", func(t *testing.T) {
@@ -159,6 +164,32 @@ func TestCanvasClipping(t *testing.T) {
 			Add("ABCDE", 0, 0).
 			String()
 		assert.Equal(t, "ABC", got)
+	})
+
+	t.Run("negative x with fixed width clips", func(t *testing.T) {
+		// Layer at x=-2 with 5 chars, canvas width=3.
+		// After shift: chars at cols 0-4, but width=3 crops to cols 0-2.
+		got := Canvas().Width(3).Add("ABCDE", -2, 0).String()
+		assert.Equal(t, "ABC", got)
+	})
+
+	t.Run("negative y with fixed height clips", func(t *testing.T) {
+		// Layer at y=-1 with 3 rows, canvas height=2.
+		// After shift: rows at 0-2, but height=2 crops to rows 0-1.
+		got := Canvas().Height(2).Add("row0\nrow1\nrow2", 0, -1).String()
+		lines := strings.Split(got, "\n")
+		assert.Equal(t, 2, len(lines))
+		assert.Equal(t, "row0", lines[0])
+		assert.Equal(t, "row1", lines[1])
+	})
+
+	t.Run("two layers one negative expand canvas to fit both", func(t *testing.T) {
+		got := Canvas().
+			Add("AA", 0, 0).
+			Add("BB", -3, 0).
+			String()
+		// BB at x=-3 shifts everything by 3. BB at cols 0-1, AA at cols 3-4.
+		assert.Equal(t, "BB AA", got)
 	})
 }
 

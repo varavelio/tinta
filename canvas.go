@@ -94,6 +94,14 @@ func (c *CanvasStyle) Height(h int) *CanvasStyle {
 // Each layer is fully opaque: every cell in a layer's grid overwrites
 // whatever is below it. Positions not covered by any layer are rendered
 // as plain spaces. The result has no trailing newline on the last row.
+//
+// When auto-sizing (Width/Height not set), the canvas expands to fit all
+// layer content, including layers at negative x/y positions. The origin
+// is shifted so that the minimum coordinate across all layers becomes 0.
+//
+// When Width or Height are explicitly set, those fixed dimensions are
+// applied after the origin shift, which can crop content that falls
+// outside the fixed bounds.
 func (c *CanvasStyle) String() string {
 	if len(c.layers) == 0 {
 		return ""
@@ -109,37 +117,63 @@ func (c *CanvasStyle) String() string {
 		return sorted[i].seq < sorted[j].seq
 	})
 
-	// Determine canvas dimensions.
-	w := c.width
-	h := c.height
-	if w == 0 || h == 0 {
-		autoW, autoH := 0, 0
-		for _, ly := range sorted {
-			for rowIdx, row := range ly.grid {
-				cy := ly.y + rowIdx
-				if cy < 0 {
-					continue
-				}
-				for colIdx := range row {
-					cx := ly.x + colIdx
-					if cx < 0 {
-						continue
+	// Find the bounding box across all layers to determine the origin
+	// shift. This ensures negative x/y values expand the canvas rather
+	// than clipping content.
+	minX, minY := 0, 0
+	maxX, maxY := 0, 0
+	hasContent := false
+	for _, ly := range sorted {
+		for rowIdx, row := range ly.grid {
+			cy := ly.y + rowIdx
+			for colIdx := range row {
+				cx := ly.x + colIdx
+				if !hasContent {
+					minX, minY = cx, cy
+					maxX, maxY = cx, cy
+					hasContent = true
+				} else {
+					if cx < minX {
+						minX = cx
 					}
-					if cx+1 > autoW {
-						autoW = cx + 1
+					if cy < minY {
+						minY = cy
 					}
-				}
-				if cy+1 > autoH {
-					autoH = cy + 1
+					if cx > maxX {
+						maxX = cx
+					}
+					if cy > maxY {
+						maxY = cy
+					}
 				}
 			}
 		}
-		if w == 0 {
-			w = autoW
-		}
-		if h == 0 {
-			h = autoH
-		}
+	}
+
+	if !hasContent {
+		return ""
+	}
+
+	// Origin shift: move everything so that the minimum coordinate is 0.
+	// When fixed dimensions are set, the shift still applies but the
+	// canvas is cropped to the fixed size.
+	shiftX := 0
+	if minX < 0 {
+		shiftX = -minX
+	}
+	shiftY := 0
+	if minY < 0 {
+		shiftY = -minY
+	}
+
+	// Determine canvas dimensions.
+	w := c.width
+	h := c.height
+	if w == 0 {
+		w = maxX + shiftX + 1
+	}
+	if h == 0 {
+		h = maxY + shiftY + 1
 	}
 
 	if w <= 0 || h <= 0 {
@@ -152,7 +186,7 @@ func (c *CanvasStyle) String() string {
 	for i := range grid {
 		grid[i] = make([]cell, w)
 		for j := range grid[i] {
-			grid[i][j] = cell{r: ' '} // transparent
+			grid[i][j] = cell{r: ' '}
 		}
 	}
 
@@ -161,12 +195,12 @@ func (c *CanvasStyle) String() string {
 	// opaque. Positions outside a layer's grid are not touched.
 	for _, ly := range sorted {
 		for rowIdx, row := range ly.grid {
-			cy := ly.y + rowIdx
+			cy := ly.y + rowIdx + shiftY
 			if cy < 0 || cy >= h {
 				continue
 			}
 			for colIdx, cl := range row {
-				cx := ly.x + colIdx
+				cx := ly.x + colIdx + shiftX
 				if cx < 0 || cx >= w {
 					continue
 				}

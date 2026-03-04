@@ -185,6 +185,53 @@ func main() {
 	// ── Selective line centering ──
 
 	fmt.Println()
+	section("Box: Title (left / center / right)")
+	t.Box().Border(t.BorderRounded).Cyan().PaddingX(1).
+		Title("Left Title", t.AlignLeft).
+		Println("Content with a left-aligned title")
+	fmt.Println()
+	t.Box().Border(t.BorderRounded).Green().PaddingX(1).
+		Title("Center Title", t.AlignCenter).
+		Println("Content with a centered title")
+	fmt.Println()
+	t.Box().Border(t.BorderRounded).Yellow().PaddingX(1).
+		Title("Right Title", t.AlignRight).
+		Println("Content with a right-aligned title")
+
+	fmt.Println()
+	section("Box: Footer (left / center / right)")
+	t.Box().Border(t.BorderDouble).Blue().PaddingX(1).
+		Footer("v1.0.0", t.AlignLeft).
+		Println("Content with a left-aligned footer")
+	fmt.Println()
+	t.Box().Border(t.BorderDouble).Magenta().PaddingX(1).
+		Footer("Page 1/3", t.AlignCenter).
+		Println("Content with a centered footer")
+	fmt.Println()
+	t.Box().Border(t.BorderDouble).Red().PaddingX(1).
+		Footer("Status: OK", t.AlignRight).
+		Println("Content with a right-aligned footer")
+
+	fmt.Println()
+	section("Box: Title + Footer combined")
+	t.Box().Border(t.BorderHeavy).BrightCyan().PaddingX(2).PaddingY(1).
+		Title("Deploy Summary", t.AlignCenter).
+		Footer("Done", t.AlignRight).
+		Println("Title + Footer combined\nservice: api\nresult: success\nduration: 12.4s")
+
+	fmt.Println()
+	section("Box: Title widens narrow content")
+	t.Box().Border(t.BorderRounded).BrightYellow().PaddingX(1).
+		Title("A Very Long Title That Widens The Box", t.AlignCenter).
+		Println("hi")
+
+	fmt.Println()
+	section("Box: Footer widens narrow content")
+	t.Box().Border(t.BorderRounded).BrightYellow().PaddingX(1).
+		Footer("A Very Long Footer That Widens The Box", t.AlignCenter).
+		Println("hi")
+
+	fmt.Println()
 	section("Box: CenterFirstLine (title centering)")
 	t.Box().Border(t.BorderDouble).Blue().PaddingX(1).CenterFirstLine().
 		Println("Title\nLeft-aligned body\ncontinues here")
