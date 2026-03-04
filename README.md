@@ -27,7 +27,11 @@
 
 Minimal, chainable terminal styling and layout for Go. Zero dependencies.
 
-Two pillars: **Text** for ANSI colors and modifiers, **Box** for bordered containers with padding, margin, shadows, and content alignment.
+Tinta is built around three composable primitives:
+
+- `Text`: ANSI colors and modifiers
+- `Box`: structured frames with spacing, alignment, corners, and title/footer
+- `Canvas`: layered 2D composition with z-index ordering
 
 ## Install
 
@@ -35,207 +39,116 @@ Two pillars: **Text** for ANSI colors and modifiers, **Box** for bordered contai
 go get github.com/varavelio/tinta
 ```
 
-## Quick start
+## Quick Start
 
 ```go
 package main
 
-import "github.com/varavelio/tinta"
+import (
+	"fmt"
+
+	"github.com/varavelio/tinta"
+)
 
 func main() {
-    // Styled text
-    tinta.Text().Red().Bold().Println("fatal: file not found")
-    tinta.Text().Green().Println("ok")
-    tinta.Text().White().OnBlue().Printf("info: %s\n", "service started")
+	tinta.Text().Red().Bold().Println("error: file not found")
 
-    // Bordered containers
-    tinta.Box().BorderRounded().PaddingY(1).PaddingX(2).Println("hello")
-    tinta.Box().BorderDouble().Blue().PaddingX(1).Println("status")
+	panel := tinta.Box().
+		Border(tinta.BorderRounded).
+		PaddingX(1).
+		Title("Status", tinta.AlignLeft).
+		Footer("ok", tinta.AlignRight).
+		String("service started")
+
+	fmt.Println(panel)
 }
 ```
 
 ## Text
 
-`tinta.Text()` is the single entry point. Every chaining method returns a new
-immutable `TextStyle`, so branching from a shared base is safe:
+`Text()` is immutable and safe to branch.
 
 ```go
 base := tinta.Text().Bold()
-err  := base.Red()    // bold + red
-warn := base.Yellow() // bold + yellow -- base is unchanged
-
-err.Println("error")
-warn.Println("warning")
+base.Red().Println("error")
+base.Green().Println("ok")
 ```
-
-16 foreground colors (`Red`, `Green`, `Blue`, ..., `BrightRed`, `BrightGreen`, ...),
-16 background colors with `On*` prefix (`OnRed`, `OnBlue`, `OnBrightCyan`, ...),
-and 7 modifiers: `Bold`, `Dim`, `Italic`, `Underline`, `Invert`, `Hidden`, `Strike`.
 
 ## Box
 
-`tinta.Box()` creates a bordered container. Borders, padding, margin, alignment,
-side visibility, shadows, and colors are all chainable:
+`Box()` supports:
+
+- independent border sides (`Top`, `Left`, `Right`, `Bottom` and corners)
+- side visibility controls (`DisableTop`, `DisableBottom`, `DisableLeft`, `DisableRight`)
+- independent corner controls (`DisableTopLeftCorner`, etc.)
+- top/bottom border labels (`Title`, `Footer`) with `AlignLeft`, `AlignCenter`, `AlignRight`
 
 ```go
-tinta.Box().BorderRounded().PaddingY(1).PaddingX(2).Blue().Println("hello, world")
+custom := tinta.Border{
+	TopLeft: "+",
+	TopRight: "+",
+	BottomLeft: "+",
+	BottomRight: "+",
+	Top: "-",
+	Left: "|",
+	Right: "!",
+	Bottom: "~",
+}
+
+tinta.Box().
+	Border(custom).
+	PaddingX(1).
+	Title("Example", tinta.AlignCenter).
+	Println("custom frame")
 ```
 
-```
-╭────────────────╮
-│                │
-│  hello, world  │
-│                │
-╰────────────────╯
-```
+Corner behavior is explicit: corners render as long as they are not explicitly disabled and at least one adjacent side is visible.
 
-### Borders
+All these borders are already included:
 
-Four built-in styles plus fully custom borders:
+- `tinta.BorderSimple`
+- `tinta.BorderDashed`
+- `tinta.BorderDotted`
+- `tinta.BorderRounded`
+- `tinta.BorderRoundedDashed`
+- `tinta.BorderRoundedDotted`
+- `tinta.BorderDouble`
+- `tinta.BorderHeavy`
+- `tinta.BorderASCII`
+- `tinta.BorderBlock`
+- `tinta.BorderBlockHalf`
+- `tinta.BorderBlockLight`
+- `tinta.BorderBlockMedium`
+- `tinta.BorderBlockDark`
 
-| Method            | Glyphs                  |
-| ----------------- | ----------------------- |
-| `BorderSimple()`  | `┌ ─ ┐ │ └ ┘` (default) |
-| `BorderRounded()` | `╭ ─ ╮ │ ╰ ╯`           |
-| `BorderDouble()`  | `╔ ═ ╗ ║ ╚ ╝`           |
-| `BorderHeavy()`   | `┏ ━ ┓ ┃ ┗ ┛`           |
+## Canvas
+
+`Canvas()` composites pre-rendered strings (commonly boxes) into a layered output.
 
 ```go
-tinta.Box().Border(tinta.Border{
-    TopLeft: "+", TopRight: "+", BottomLeft: "+", BottomRight: "+",
-    Horizontal: "-", Vertical: "|",
-}).PaddingX(1).Println("custom")
+front := tinta.Box().Border(tinta.BorderHeavy).PaddingX(2).String("front")
+back := tinta.Box().Border(tinta.BorderRounded).PaddingX(2).String("back")
+
+out := tinta.Canvas().
+	Add(back, -1, 1).
+	Add(front, 0, 0).
+	String()
 ```
 
-### Padding and Margin
+By default, negative `x/y` coordinates expand the canvas to fit all content. Fixed `Width(...)` and `Height(...)` apply cropping.
 
-Explicit single-value methods -- no CSS-shorthand overloads:
+## Output and Color Control
 
-`Padding(n)`, `PaddingTop(n)`, `PaddingBottom(n)`, `PaddingLeft(n)`, `PaddingRight(n)`, `PaddingX(n)`, `PaddingY(n)`
+- `Print*` methods write to the package output writer (`os.Stdout` by default)
+- `SetOutput(w)` redirects default output
+- `ForceColors(true|false)` overrides automatic color detection
 
-Same pattern for margin: `Margin(n)`, `MarginTop(n)`, ..., `MarginX(n)`, `MarginY(n)`.
+## API Reference
 
-### Content alignment
+For the complete API surface and method-level documentation, see:
 
-```go
-tinta.Box().BorderRounded().Center().PaddingX(1).Println("Hello, World!\nhi\nTinta!")
-```
-
-```
-╭───────────────╮
-│ Hello, World! │
-│      hi       │
-│    Tinta!     │
-╰───────────────╯
-```
-
-`Center()` centers all lines. `CenterTrim()` trims whitespace first.
-`CenterFirstLine()`, `CenterLastLine()`, and `CenterLine(n)` target specific lines.
-
-### Side visibility
-
-Hide individual border sides with `DisableTop()`, `DisableBottom()`, `DisableLeft()`, `DisableRight()`.
-Combine them for blockquotes, heading underlines, and open-corner effects:
-
-```go
-// Blockquote
-tinta.Box().BorderHeavy().BrightCyan().
-    DisableTop().DisableBottom().DisableRight().
-    PaddingLeft(1).
-    Println("The best way to predict the\nfuture is to invent it.\n-- Alan Kay")
-```
-
-```
-┃ The best way to predict the
-┃ future is to invent it.
-┃ -- Alan Kay
-```
-
-```go
-// Heading underline
-tinta.Box().BorderHeavy().BrightYellow().
-    DisableTop().DisableLeft().DisableRight().
-    Println("Section Title")
-```
-
-```
-Section Title
-━━━━━━━━━━━━━
-```
-
-### Shadow
-
-Add an L-shaped 3D shadow to any box. `Shadow` takes a position and a style -- both required:
-
-```go
-tinta.Box().BorderRounded().PaddingX(2).
-    Shadow(tinta.ShadowBottomRight, tinta.ShadowLight).
-    Println("Hello")
-```
-
-```
-╭─────────╮
-│  Hello  │░
-╰─────────╯░
- ░░░░░░░░░░░
-```
-
-**Positions:** `ShadowBottomRight`, `ShadowBottomLeft`, `ShadowTopRight`, `ShadowTopLeft`.
-
-**Predefined styles:** `ShadowLight` (░), `ShadowMedium` (▒), `ShadowDark` (▓), `ShadowBlock` (█).
-
-For full control, pass a custom `ShadowStyle` with individual corner, horizontal, and vertical glyphs.
-Shadow color defaults to bright-black; adjust with `ShadowDim()`, `ShadowBlack()`, or `ShadowBrightBlack()`.
-
-### Nested boxes
-
-Boxes are ANSI-aware and color-safe. Inner resets never corrupt the outer box styling:
-
-```go
-inner := tinta.Box().BorderRounded().Green().PaddingX(1).String("Inner box")
-tinta.Box().BorderDouble().Blue().PaddingY(1).PaddingX(2).Println(inner)
-```
-
-```
-╔══════════════════╗
-║                  ║
-║  ╭───────────╮   ║
-║  │ Inner box │   ║
-║  ╰───────────╯   ║
-║                  ║
-╚══════════════════╝
-```
-
-## Output
-
-Both `TextStyle` and `BoxStyle` share the same output methods:
-
-| Method                 | Returns        |
-| ---------------------- | -------------- |
-| `String(s)`            | `string`       |
-| `Sprintf(fmt, ...)`    | `string`       |
-| `Print(s)`             | --             |
-| `Println(s)`           | --             |
-| `Printf(fmt, ...)`     | --             |
-| `Fprint(w, s)`         | `(int, error)` |
-| `Fprintln(w, s)`       | `(int, error)` |
-| `Fprintf(w, fmt, ...)` | `(int, error)` |
-
-`Print`/`Println`/`Printf` write to the default output (`os.Stdout`).
-`SetOutput(w)` redirects it. `ForceColors(bool)` overrides auto-detection.
-
-## Color detection
-
-ANSI codes are only emitted when the terminal supports them.
-
-**Disabled** when `NO_COLOR`, `NO_COLORS`, `DISABLE_COLORS`, `CLICOLOR=0`, or `TERM=dumb` is set, or the writer is not a TTY.
-
-**Forced** when `FORCE_COLOR` or `CLICOLOR_FORCE` is set. Disable always takes precedence.
-
-## Full API reference
-
-See the complete API documentation on [pkg.go.dev](https://pkg.go.dev/github.com/varavelio/tinta).
+- [pkg.go.dev/github.com/varavelio/tinta](https://pkg.go.dev/github.com/varavelio/tinta)
 
 ## License
 
-This project is released under the MIT License, read more at [LICENSE](LICENSE)
+This project is released under the MIT License. See [LICENSE](LICENSE).
