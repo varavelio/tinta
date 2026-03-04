@@ -51,7 +51,7 @@ func TestBoxString(t *testing.T) {
 
 func TestBoxBorderStyles(t *testing.T) {
 	t.Run("rounded", func(t *testing.T) {
-		got := Box().BorderRounded().String("x")
+		got := Box().Border(BorderRounded).String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "╭─╮", lines[0])
 		assert.Equal(t, "│x│", lines[1])
@@ -59,7 +59,7 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("double", func(t *testing.T) {
-		got := Box().BorderDouble().String("x")
+		got := Box().Border(BorderDouble).String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "╔═╗", lines[0])
 		assert.Equal(t, "║x║", lines[1])
@@ -67,7 +67,7 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("heavy", func(t *testing.T) {
-		got := Box().BorderHeavy().String("x")
+		got := Box().Border(BorderHeavy).String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┏━┓", lines[0])
 		assert.Equal(t, "┃x┃", lines[1])
@@ -75,7 +75,7 @@ func TestBoxBorderStyles(t *testing.T) {
 	})
 
 	t.Run("simple is default", func(t *testing.T) {
-		got := Box().BorderSimple().String("x")
+		got := Box().Border(BorderSimple).String("x")
 		lines := strings.Split(got, "\n")
 		assert.Equal(t, "┌─┐", lines[0])
 		assert.Equal(t, "│x│", lines[1])
@@ -221,8 +221,8 @@ func TestBoxANSIContent(t *testing.T) {
 func TestBoxImmutability(t *testing.T) {
 	t.Run("border change does not affect original", func(t *testing.T) {
 		base := Box()
-		rounded := base.BorderRounded()
-		heavy := base.BorderHeavy()
+		rounded := base.Border(BorderRounded)
+		heavy := base.Border(BorderHeavy)
 
 		baseLines := strings.Split(base.String("x"), "\n")
 		roundedLines := strings.Split(rounded.String("x"), "\n")
@@ -329,7 +329,7 @@ func TestBoxPrintMethods(t *testing.T) {
 
 func TestBoxConcurrent(t *testing.T) {
 	t.Run("shared box used from many goroutines", func(t *testing.T) {
-		b := Box().BorderRounded().Padding(1)
+		b := Box().Border(BorderRounded).Padding(1)
 
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
@@ -353,8 +353,8 @@ func TestBoxConcurrent(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				rounded := base.BorderRounded()
-				heavy := base.BorderHeavy()
+				rounded := base.Border(BorderRounded)
+				heavy := base.Border(BorderHeavy)
 
 				rLines := strings.Split(rounded.String("x"), "\n")
 				hLines := strings.Split(heavy.String("x"), "\n")
@@ -717,10 +717,10 @@ func TestBoxDisableLeft(t *testing.T) {
 	t.Run("hides left border glyphs", func(t *testing.T) {
 		got := Box().DisableLeft().String("hi")
 		lines := strings.Split(got, "\n")
-		// Left corners/verticals replaced with space.
-		assert.Equal(t, " ──┐", lines[0])
+		// Left vertical is replaced with spaces on content rows.
+		assert.Equal(t, "┌──┐", lines[0])
 		assert.Equal(t, " hi│", lines[1])
-		assert.Equal(t, " ──┘", lines[2])
+		assert.Equal(t, "└──┘", lines[2])
 	})
 }
 
@@ -730,9 +730,9 @@ func TestBoxDisableRight(t *testing.T) {
 	t.Run("hides right border glyphs", func(t *testing.T) {
 		got := Box().DisableRight().String("hi")
 		lines := strings.Split(got, "\n")
-		assert.Equal(t, "┌── ", lines[0])
+		assert.Equal(t, "┌──┐", lines[0])
 		assert.Equal(t, "│hi ", lines[1])
-		assert.Equal(t, "└── ", lines[2])
+		assert.Equal(t, "└──┘", lines[2])
 	})
 }
 
@@ -749,9 +749,9 @@ func TestBoxDisableCombined(t *testing.T) {
 	t.Run("disable left and right removes verticals", func(t *testing.T) {
 		got := Box().DisableLeft().DisableRight().String("hi")
 		lines := strings.Split(got, "\n")
-		assert.Equal(t, " ── ", lines[0])
+		assert.Equal(t, "┌──┐", lines[0])
 		assert.Equal(t, " hi ", lines[1])
-		assert.Equal(t, " ── ", lines[2])
+		assert.Equal(t, "└──┘", lines[2])
 	})
 
 	t.Run("disable all four sides", func(t *testing.T) {
@@ -767,13 +767,13 @@ func TestBoxDisableCombined(t *testing.T) {
 		lines := strings.Split(got, "\n")
 		// No top row. Content row has space instead of left vertical.
 		assert.Equal(t, " hi│", lines[0])
-		assert.Equal(t, " ──┘", lines[1])
+		assert.Equal(t, "└──┘", lines[1])
 	})
 
 	t.Run("disable bottom and right for shadow offset", func(t *testing.T) {
 		got := Box().DisableBottom().DisableRight().String("hi")
 		lines := strings.Split(got, "\n")
-		assert.Equal(t, "┌── ", lines[0])
+		assert.Equal(t, "┌──┐", lines[0])
 		assert.Equal(t, "│hi ", lines[1])
 		assert.Equal(t, 3, len(lines))
 	})
@@ -803,7 +803,7 @@ func TestBoxDisableImmutability(t *testing.T) {
 		noLeftLines := strings.Split(noLeft.String("x"), "\n")
 
 		assert.Equal(t, "┌─┐", baseLines[0])
-		assert.Equal(t, " ─┐", noLeftLines[0])
+		assert.Equal(t, "┌─┐", noLeftLines[0])
 	})
 
 	t.Run("DisableRight does not affect original", func(t *testing.T) {
@@ -814,7 +814,7 @@ func TestBoxDisableImmutability(t *testing.T) {
 		noRightLines := strings.Split(noRight.String("x"), "\n")
 
 		assert.Equal(t, "┌─┐", baseLines[0])
-		assert.Equal(t, "┌─ ", noRightLines[0])
+		assert.Equal(t, "┌─┐", noRightLines[0])
 	})
 
 	t.Run("DisableBottom does not affect original", func(t *testing.T) {
@@ -848,8 +848,8 @@ func TestBoxDisableWithColors(t *testing.T) {
 func TestBoxNestedColorRobustness(t *testing.T) {
 	t.Run("inner box resets do not corrupt outer border", func(t *testing.T) {
 		ForceColors(true)
-		inner := Box().BorderRounded().Blue().String("hello")
-		outer := Box().BorderDouble().Red().String(inner)
+		inner := Box().Border(BorderRounded).Blue().String("hello")
+		outer := Box().Border(BorderDouble).Red().String(inner)
 
 		rows := strings.Split(outer, "\n")
 		// The outer box content rows contain the inner box lines.
@@ -1092,191 +1092,86 @@ func TestBoxCenterLineImmutability(t *testing.T) {
 	})
 }
 
-// --- Shadow ---
+// --- Corner controls ---
 
-func TestBoxShadowBottomRight(t *testing.T) {
+func TestBoxCornerControls(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure with corners", func(t *testing.T) {
-		got := Box().Shadow(ShadowBottomRight, ShadowLight).String("hi")
+	t.Run("disabling left side keeps corners", func(t *testing.T) {
+		got := Box().Border(BorderRounded).DisableLeft().String("x")
 		rows := strings.Split(got, "\n")
-		// Expected (ShadowLight uses ░ for every glyph):
-		// ┌──┐      (row 0: box + spacer)
-		// │hi│░     (row 1: box + TopRight corner)
-		// └──┘░     (row 2: box + Vertical)
-		//  ░░░░     (row 3: spacer + BottomLeft + ░░ + BottomRight)
-		assert.Equal(t, 4, len(rows))
-		// Row 0: top border + space.
-		assert.Equal(t, "┌──┐ ", rows[0])
-		// Row 1: content + TopRight corner (░).
-		assert.Equal(t, "│hi│░", rows[1])
-		// Row 2: bottom border + vertical (░).
-		assert.Equal(t, "└──┘░", rows[2])
-		// Row 3: space + shadow bar (░░░░).
-		assert.Equal(t, " ░░░░", rows[3])
+		assert.Equal(t, "╭─╮", rows[0])
+		assert.Equal(t, " x│", rows[1])
+		assert.Equal(t, "╰─╯", rows[2])
 	})
 
-	t.Run("shadow adds one extra row and one extra column", func(t *testing.T) {
-		noShadow := Box().String("test")
-		withShadow := Box().Shadow(ShadowBottomRight, ShadowLight).String("test")
-
-		noRows := strings.Split(noShadow, "\n")
-		shadowRows := strings.Split(withShadow, "\n")
-
-		// Shadow adds one extra row.
-		assert.Equal(t, len(noRows)+1, len(shadowRows))
-
-		// Each shadow row is 1 char wider than the non-shadow row.
-		for i := 0; i < len(noRows); i++ {
-			noW := visibleWidth(noRows[i])
-			shW := visibleWidth(shadowRows[i])
-			assert.Equal(t, noW+1, shW)
-		}
+	t.Run("disable individual corners", func(t *testing.T) {
+		got := Box().DisableTopLeftCorner().DisableBottomRightCorner().String("x")
+		rows := strings.Split(got, "\n")
+		assert.Equal(t, " ─┐", rows[0])
+		assert.Equal(t, "│x│", rows[1])
+		assert.Equal(t, "└─ ", rows[2])
 	})
 
-	t.Run("custom style renders distinct corners", func(t *testing.T) {
-		sty := ShadowStyle{
-			TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
-			Horizontal: "─", Vertical: "│",
-		}
-		got := Box().Shadow(ShadowBottomRight, sty).String("hi")
+	t.Run("disable all corners", func(t *testing.T) {
+		got := Box().DisableCorners().String("x")
 		rows := strings.Split(got, "\n")
-		// Row 0: box + space.
-		assert.Equal(t, "┌──┐ ", rows[0])
-		// Row 1: box + TopRight corner (╮).
-		assert.Equal(t, "│hi│╮", rows[1])
-		// Row 2: box + Vertical (│).
-		assert.Equal(t, "└──┘│", rows[2])
-		// Row 3: space + BottomLeft + ── + BottomRight = ╰──╯
-		assert.Equal(t, " ╰──╯", rows[3])
+		assert.Equal(t, " ─ ", rows[0])
+		assert.Equal(t, "│x│", rows[1])
+		assert.Equal(t, " ─ ", rows[2])
 	})
 }
 
-func TestBoxShadowBottomLeft(t *testing.T) {
+func TestBoxCornerControlImmutability(t *testing.T) {
 	ForceColors(false)
 	defer ForceColors(true)
 
-	t.Run("basic shadow structure with corners", func(t *testing.T) {
-		got := Box().Shadow(ShadowBottomLeft, ShadowLight).String("hi")
-		rows := strings.Split(got, "\n")
-		assert.Equal(t, 4, len(rows))
-		// Row 0: space + top border.
-		assert.Equal(t, " ┌──┐", rows[0])
-		// Row 1: TopLeft corner (░) + content.
-		assert.Equal(t, "░│hi│", rows[1])
-		// Row 2: vertical (░) + bottom border.
-		assert.Equal(t, "░└──┘", rows[2])
-		// Row 3: shadow bar + space.
-		assert.Equal(t, "░░░░ ", rows[3])
-	})
-}
-
-func TestBoxShadowTopRight(t *testing.T) {
-	ForceColors(false)
-	defer ForceColors(true)
-
-	t.Run("basic shadow structure with corners", func(t *testing.T) {
-		got := Box().Shadow(ShadowTopRight, ShadowLight).String("hi")
-		rows := strings.Split(got, "\n")
-		assert.Equal(t, 4, len(rows))
-		// Row 0: space + shadow top bar (TopLeft + ░░ + TopRight = ░░░░).
-		assert.Equal(t, " ░░░░", rows[0])
-		// Row 1: top border + Vertical.
-		assert.Equal(t, "┌──┐░", rows[1])
-		// Row 2: content + Vertical.
-		assert.Equal(t, "│hi│░", rows[2])
-		// Row 3: bottom border + BottomRight corner.
-		assert.Equal(t, "└──┘░", rows[3])
-	})
-}
-
-func TestBoxShadowTopLeft(t *testing.T) {
-	ForceColors(false)
-	defer ForceColors(true)
-
-	t.Run("basic shadow structure with corners", func(t *testing.T) {
-		got := Box().Shadow(ShadowTopLeft, ShadowLight).String("hi")
-		rows := strings.Split(got, "\n")
-		assert.Equal(t, 4, len(rows))
-		// Row 0: shadow bar + space.
-		assert.Equal(t, "░░░░ ", rows[0])
-		// Row 1: vertical (░) + top border.
-		assert.Equal(t, "░┌──┐", rows[1])
-		// Row 2: vertical (░) + content.
-		assert.Equal(t, "░│hi│", rows[2])
-		// Row 3: BottomLeft corner (░) + bottom border.
-		assert.Equal(t, "░└──┘", rows[3])
-	})
-}
-
-func TestBoxShadowWithColors(t *testing.T) {
-	t.Run("shadow gets its own ANSI codes", func(t *testing.T) {
-		ForceColors(true)
-		got := Box().Red().Shadow(ShadowBottomRight, ShadowLight).String("x")
-		rows := strings.Split(got, "\n")
-		// Shadow rows should contain the bright-black code (default shadow color).
-		// The shadow bottom row should have shadow styling.
-		lastRow := rows[len(rows)-1]
-		assert.Equal(t, true, strings.Contains(lastRow, "\x1b[90m"))
-	})
-
-	t.Run("custom shadow style renders correct glyphs", func(t *testing.T) {
-		ForceColors(false)
-		defer ForceColors(true)
-		got := Box().Shadow(ShadowBottomRight, ShadowBlock).String("x")
-		rows := strings.Split(got, "\n")
-		// Shadow should use █ instead of ░.
-		assert.Equal(t, true, strings.Contains(rows[1], "█"))
-		assert.Equal(t, true, strings.Contains(rows[len(rows)-1], "█"))
-	})
-}
-
-func TestBoxShadowWithPadding(t *testing.T) {
-	ForceColors(false)
-	defer ForceColors(true)
-
-	t.Run("shadow works with padding", func(t *testing.T) {
-		got := Box().Padding(1).Shadow(ShadowBottomRight, ShadowLight).String("x")
-		rows := strings.Split(got, "\n")
-		// Box has padding so more rows: top border, top pad, content, bottom pad, bottom border + shadow bottom.
-		assert.Equal(t, 6, len(rows))
-		// Last row is shadow bottom.
-		assert.Equal(t, true, strings.Contains(rows[5], "░"))
-	})
-}
-
-func TestBoxShadowImmutability(t *testing.T) {
-	ForceColors(false)
-	defer ForceColors(true)
-
-	t.Run("Shadow does not modify original", func(t *testing.T) {
+	t.Run("corner changes do not modify original", func(t *testing.T) {
 		base := Box()
-		shadowed := base.Shadow(ShadowBottomRight, ShadowLight)
+		changed := base.DisableCorners()
 
-		baseGot := base.String("x")
-		shadowGot := shadowed.String("x")
+		baseRows := strings.Split(base.String("x"), "\n")
+		changedRows := strings.Split(changed.String("x"), "\n")
 
-		baseRows := strings.Split(baseGot, "\n")
-		shadowRows := strings.Split(shadowGot, "\n")
-
-		// Base has 3 rows, shadow has 4.
-		assert.Equal(t, 3, len(baseRows))
-		assert.Equal(t, 4, len(shadowRows))
+		assert.Equal(t, "┌─┐", baseRows[0])
+		assert.Equal(t, " ─ ", changedRows[0])
 	})
+}
 
-	t.Run("Shadow with different styles does not cross-contaminate", func(t *testing.T) {
-		base := Box()
-		light := base.Shadow(ShadowBottomRight, ShadowLight)
-		block := base.Shadow(ShadowBottomRight, ShadowBlock)
+// --- 3D border integration (using Canvas) ---
 
-		lightGot := light.String("x")
-		blockGot := block.String("x")
+func TestBox3DBorderEffect(t *testing.T) {
+	ForceColors(false)
+	defer ForceColors(true)
 
-		// Light uses ░, block uses █.
-		assert.Equal(t, true, strings.Contains(lightGot, "░"))
-		assert.Equal(t, true, strings.Contains(blockGot, "█"))
-		assert.Equal(t, false, strings.Contains(lightGot, "█"))
-		assert.Equal(t, false, strings.Contains(blockGot, "░"))
+	t.Run("nested box with canvas creates 3D effect", func(t *testing.T) {
+		text := "Lorem ipsum"
+		front := Box().
+			Border(BorderHeavy).
+			PaddingX(5).
+			PaddingY(1).
+			String(text)
+		shadow := Box().
+			Border(BorderRounded).
+			PaddingX(5).
+			PaddingY(1).
+			String(text)
+
+		got := Canvas().
+			Add(shadow, 1, 1).
+			Add(front, 0, 0).
+			String()
+
+		expected := strings.TrimSpace(`
+┏━━━━━━━━━━━━━━━━━━━━━┓
+┃                     ┃╮
+┃     Lorem ipsum     ┃│
+┃                     ┃│
+┗━━━━━━━━━━━━━━━━━━━━━┛│
+ ╰─────────────────────╯
+`)
+
+		assert.Equal(t, expected, got)
 	})
 }

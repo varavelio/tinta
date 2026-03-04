@@ -10,7 +10,7 @@ func main() {
 	t.ForceColors(true)
 
 	// ── Header ──
-	t.Box().BorderRounded().BrightWhite().OnBlue().PaddingX(2).Println("tinta demo")
+	t.Box().Border(t.BorderRounded).BrightWhite().OnBlue().PaddingX(2).Println("tinta demo")
 	fmt.Println()
 
 	// ── Text: Base colors ──
@@ -82,11 +82,11 @@ func main() {
 	section("Box: Border styles")
 	t.Box().Println("Simple (default)")
 	fmt.Println()
-	t.Box().BorderRounded().Println("Rounded")
+	t.Box().Border(t.BorderRounded).Println("Rounded")
 	fmt.Println()
-	t.Box().BorderDouble().Println("Double")
+	t.Box().Border(t.BorderDouble).Println("Double")
 	fmt.Println()
-	t.Box().BorderHeavy().Println("Heavy")
+	t.Box().Border(t.BorderHeavy).Println("Heavy")
 
 	fmt.Println()
 	section("Box: Custom border")
@@ -98,40 +98,40 @@ func main() {
 
 	fmt.Println()
 	section("Box: Padding")
-	t.Box().BorderRounded().PaddingY(1).PaddingX(3).Println("Padded content")
+	t.Box().Border(t.BorderRounded).PaddingY(1).PaddingX(3).Println("Padded content")
 
 	fmt.Println()
 	section("Box: Margin")
-	t.Box().BorderRounded().MarginLeft(4).Println("Left margin = 4")
+	t.Box().Border(t.BorderRounded).MarginLeft(4).Println("Left margin = 4")
 
 	fmt.Println()
 	section("Box: Colored borders")
-	t.Box().BorderRounded().Red().Println("Red border")
+	t.Box().Border(t.BorderRounded).Red().Println("Red border")
 	fmt.Println()
-	t.Box().BorderDouble().Blue().Bold().Println("Blue bold border")
+	t.Box().Border(t.BorderDouble).Blue().Bold().Println("Blue bold border")
 	fmt.Println()
-	t.Box().BorderHeavy().Green().OnBlack().PaddingX(1).Println("Green on black")
+	t.Box().Border(t.BorderHeavy).Green().OnBlack().PaddingX(1).Println("Green on black")
 
 	fmt.Println()
 	section("Box: Styled content inside a box")
 	styled := t.Text().Red().Bold().String("Error:") + " " + t.Text().White().String("something broke")
-	t.Box().BorderRounded().Yellow().PaddingX(1).Println(styled)
+	t.Box().Border(t.BorderRounded).Yellow().PaddingX(1).Println(styled)
 
 	fmt.Println()
 	section("Box: Multiline content")
-	t.Box().BorderDouble().Cyan().PaddingY(1).PaddingX(2).Println("Line 1: Hello\nLine 2: World\nLine 3: Tinta!")
+	t.Box().Border(t.BorderDouble).Cyan().PaddingY(1).PaddingX(2).Println("Line 1: Hello\nLine 2: World\nLine 3: Tinta!")
 
 	fmt.Println()
 	section("Box: Center")
-	t.Box().BorderRounded().Center().PaddingX(1).Println("Hello, World!\nhi\nTinta!")
+	t.Box().Border(t.BorderRounded).Center().PaddingX(1).Println("Hello, World!\nhi\nTinta!")
 
 	fmt.Println()
 	section("Box: CenterTrim")
-	t.Box().BorderRounded().CenterTrim().PaddingX(1).Println("  Hello  \n  hi  \n  Tinta!  ")
+	t.Box().Border(t.BorderRounded).CenterTrim().PaddingX(1).Println("  Hello  \n  hi  \n  Tinta!  ")
 
 	fmt.Println()
 	section("Box: Immutability")
-	boxBase := t.Box().BorderRounded()
+	boxBase := t.Box().Border(t.BorderRounded)
 	boxBase.Red().PaddingX(1).Println("Red rounded")
 	fmt.Println()
 	boxBase.Blue().PaddingX(1).Println("Blue rounded (base unaffected)")
@@ -140,19 +140,19 @@ func main() {
 
 	fmt.Println()
 	section("Box: DisableTop")
-	t.Box().BorderRounded().DisableTop().Cyan().PaddingX(1).Println("No top border")
+	t.Box().Border(t.BorderRounded).DisableTop().Cyan().PaddingX(1).Println("No top border")
 
 	fmt.Println()
 	section("Box: DisableBottom")
-	t.Box().BorderRounded().DisableBottom().Magenta().PaddingX(1).Println("No bottom border")
+	t.Box().Border(t.BorderRounded).DisableBottom().Magenta().PaddingX(1).Println("No bottom border")
 
 	fmt.Println()
 	section("Box: DisableLeft")
-	t.Box().BorderRounded().DisableLeft().Yellow().PaddingX(1).Println("No left border")
+	t.Box().Border(t.BorderRounded).DisableLeft().Yellow().PaddingX(1).Println("No left border")
 
 	fmt.Println()
 	section("Box: DisableRight")
-	t.Box().BorderRounded().DisableRight().Green().PaddingX(1).Println("No right border")
+	t.Box().Border(t.BorderRounded).DisableRight().Green().PaddingX(1).Println("No right border")
 
 	fmt.Println()
 	section("Box: DisableTop + DisableBottom (horizontal rule effect)")
@@ -160,75 +160,43 @@ func main() {
 
 	fmt.Println()
 	section("Box: DisableLeft + DisableRight (top/bottom only)")
-	t.Box().BorderDouble().DisableLeft().DisableRight().Blue().PaddingX(1).Println("Horizontal frame")
+	t.Box().Border(t.BorderDouble).DisableLeft().DisableRight().Blue().PaddingX(1).Println("Horizontal frame")
 
-	// ── Shadow effect ──
-	// Native 3D shadow with configurable glyphs and position.
+	// ── Faux shadow with nested boxes ──
 
-	fmt.Println()
-	section("Box: Shadow (bottom-right)")
-	t.Box().BorderRounded().BrightWhite().PaddingX(2).
-		Shadow(t.ShadowBottomRight, t.ShadowLight).
-		Println("Shadow box")
+	// ── Canvas: faux shadow ──
 
 	fmt.Println()
-	section("Box: Shadow (bottom-left)")
-	t.Box().BorderRounded().Cyan().PaddingX(2).
-		Shadow(t.ShadowBottomLeft, t.ShadowLight).
-		Println("Shadow left")
+	section("Canvas: Faux shadow with layered boxes")
+	shadowInner := t.Box().Border(t.BorderRounded).BrightWhite().PaddingX(2).String("Shadow box")
+	shadowOuter := t.Box().Border(t.BorderBlockLight).PaddingX(3).PaddingY(1).String("Shadow box")
+	fmt.Println(t.Canvas().
+		Add(shadowOuter, 1, 1).
+		Add(shadowInner, 0, 0).
+		String())
 
 	fmt.Println()
-	section("Box: Shadow (top-right)")
-	t.Box().BorderDouble().Magenta().PaddingX(1).
-		Shadow(t.ShadowTopRight, t.ShadowLight).
-		Println("Top-right")
-
-	fmt.Println()
-	section("Box: Shadow (top-left)")
-	t.Box().BorderHeavy().Yellow().PaddingX(1).
-		Shadow(t.ShadowTopLeft, t.ShadowLight).
-		Println("Top-left")
-
-	fmt.Println()
-	section("Box: Shadow with custom style (dark blocks)")
-	t.Box().BorderRounded().Green().PaddingX(2).
-		Shadow(t.ShadowBottomRight, t.ShadowDark).
-		Println("Dark shadow")
-
-	fmt.Println()
-	section("Box: Shadow with custom style (full blocks)")
-	t.Box().BorderRounded().Red().PaddingX(2).
-		Shadow(t.ShadowBottomRight, t.ShadowBlock).
-		Println("Block shadow")
-
-	fmt.Println()
-	section("Box: Shadow with custom style (Rounded corners)")
-	t.Box().BorderRounded().Green().PaddingX(2).
-		Shadow(t.ShadowBottomRight, t.ShadowStyle{
-			TopLeft:     t.BorderRounded.TopLeft,
-			TopRight:    t.BorderRounded.TopRight,
-			BottomLeft:  t.BorderRounded.BottomLeft,
-			BottomRight: t.BorderRounded.BottomRight,
-			Horizontal:  t.BorderRounded.Horizontal,
-			Vertical:    t.BorderRounded.Vertical,
-		}).
-		Println("Custom rounded shadow")
+	section("Box: Independent corner control")
+	t.Box().Border(t.BorderHeavy).
+		DisableTopLeftCorner().DisableBottomRightCorner().
+		PaddingX(1).
+		Println("Custom corner mask")
 
 	// ── Selective line centering ──
 
 	fmt.Println()
 	section("Box: CenterFirstLine (title centering)")
-	t.Box().BorderDouble().Blue().PaddingX(1).CenterFirstLine().
+	t.Box().Border(t.BorderDouble).Blue().PaddingX(1).CenterFirstLine().
 		Println("Title\nLeft-aligned body\ncontinues here")
 
 	fmt.Println()
 	section("Box: CenterLastLine")
-	t.Box().BorderDouble().Green().PaddingX(1).CenterLastLine().
+	t.Box().Border(t.BorderDouble).Green().PaddingX(1).CenterLastLine().
 		Println("Body content here\ncontinues...\n-- The End --")
 
 	fmt.Println()
 	section("Box: CenterLine(1) — center only middle line")
-	t.Box().BorderRounded().Cyan().PaddingX(1).CenterLine(1).
+	t.Box().Border(t.BorderRounded).Cyan().PaddingX(1).CenterLine(1).
 		Println("Top\nCentered\nBottom")
 
 	// ── Nested box (color-safe) ──
@@ -237,43 +205,43 @@ func main() {
 	section("Box: Nested boxes (color-safe)")
 
 	// Inner box: a small styled box.
-	inner := t.Box().BorderRounded().Green().PaddingX(1).String(
+	inner := t.Box().Border(t.BorderRounded).Green().PaddingX(1).String(
 		t.Text().Green().Bold().String("Inner box") + "\n" +
 			t.Text().White().String("with content"),
 	)
 
 	// Outer box wraps the inner box as its content.
 	// The inner box's ANSI resets do NOT corrupt the outer box's styling.
-	t.Box().BorderDouble().Blue().PaddingY(1).PaddingX(2).Println(inner)
+	t.Box().Border(t.BorderDouble).Blue().PaddingY(1).PaddingX(2).Println(inner)
 
 	// ── Advanced nested: multiple inner boxes ──
 
 	fmt.Println()
 	section("Box: Multiple nested boxes")
 
-	box1 := t.Box().BorderRounded().Red().PaddingX(1).String("Alert")
-	box2 := t.Box().BorderRounded().Green().PaddingX(1).String("Success")
-	box3 := t.Box().BorderRounded().Yellow().PaddingX(1).String("Warning")
+	box1 := t.Box().Border(t.BorderRounded).Red().PaddingX(1).String("Alert")
+	box2 := t.Box().Border(t.BorderRounded).Green().PaddingX(1).String("Success")
+	box3 := t.Box().Border(t.BorderRounded).Yellow().PaddingX(1).String("Warning")
 
 	combined := box1 + "\n" + box2 + "\n" + box3
-	t.Box().BorderHeavy().Cyan().PaddingY(1).PaddingX(2).Println(combined)
+	t.Box().Border(t.BorderHeavy).Cyan().PaddingY(1).PaddingX(2).Println(combined)
 
 	// ── Open corner effect ──
 
 	fmt.Println()
 	section("Box: Open corner (DisableTop + DisableLeft)")
-	t.Box().BorderHeavy().Red().DisableTop().DisableLeft().PaddingX(1).Println("Open top-left\ncorner effect")
+	t.Box().Border(t.BorderHeavy).Red().DisableTop().DisableLeft().PaddingX(1).Println("Open top-left\ncorner effect")
 
 	fmt.Println()
 	section("Box: L-shape (DisableTop + DisableRight)")
-	t.Box().BorderDouble().Magenta().DisableTop().DisableRight().PaddingX(1).Println("L-shape border\neffect")
+	t.Box().Border(t.BorderDouble).Magenta().DisableTop().DisableRight().PaddingX(1).Println("L-shape border\neffect")
 
 	// ── Quote / blockquote effect ──
 	// Only left border visible: disable top, bottom, and right.
 
 	fmt.Println()
 	section("Box: Blockquote (left border only)")
-	t.Box().BorderHeavy().BrightCyan().
+	t.Box().Border(t.BorderHeavy).BrightCyan().
 		DisableTop().DisableBottom().DisableRight().
 		PaddingLeft(1).
 		Println("The best way to predict the\nfuture is to invent it.\n— Alan Kay")
@@ -283,9 +251,46 @@ func main() {
 
 	fmt.Println()
 	section("Box: Heading underline (bottom border only)")
-	t.Box().BorderHeavy().BrightYellow().
+	t.Box().Border(t.BorderHeavy).BrightYellow().
 		DisableTop().DisableLeft().DisableRight().
 		Println("Section Title")
+
+	// ── Canvas: 3D Border ──
+
+	fmt.Println()
+	section("Canvas: 3D border effect")
+	text := "Lorem ipsum"
+
+	front := t.Box().
+		Border(t.BorderHeavy).
+		BrightYellow().
+		PaddingX(5).
+		PaddingY(1).
+		String(text)
+	shadow1 := t.Box().
+		Border(t.BorderRounded).
+		Red().
+		PaddingX(5).
+		PaddingY(1).
+		String(text)
+	shadow2 := t.Box().
+		Border(t.BorderRounded).
+		Blue().
+		PaddingX(5).
+		PaddingY(1).
+		String(text)
+	shadow3 := t.Box().
+		Border(t.BorderRounded).
+		Yellow().
+		PaddingX(5).
+		PaddingY(1).
+		String(text)
+	fmt.Println(t.Canvas().
+		Add(shadow3, 3, -1).
+		Add(shadow2, 4, 2).
+		Add(shadow1, 6, 1).
+		Add(front, 5, 0).
+		String())
 }
 
 func section(label string) {
