@@ -734,10 +734,10 @@ func (b *BoxStyle) render(content string) string {
 		}
 
 		if bodyIdx == totalBodyRows-1 {
-			if showBotLeftCap && !(bodyIdx == 0 && showTopLeftCap) {
+			if showBotLeftCap && (bodyIdx != 0 || !showTopLeftCap) {
 				leftGlyph = b.border.BottomLeft
 			}
-			if showBotRightCap && !(bodyIdx == 0 && showTopRightCap) {
+			if showBotRightCap && (bodyIdx != 0 || !showTopRightCap) {
 				rightGlyph = b.border.BottomRight
 			}
 		}
